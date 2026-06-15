@@ -1,13 +1,14 @@
-import { jwt } from "@elysiajs/jwt";
 import { Elysia } from "elysia";
 
 import type { AppConfig } from "../../config/env";
-import { requireAuth } from "../../plugins/auth.plugin";
+import {
+  createAccessTokenPlugin,
+  requireAuth,
+} from "../../plugins/auth.plugin";
 import { successResponse } from "../../shared/http/response";
 import {
   authErrorResponseSchema,
   currentUserResponseSchema,
-  jwtPayloadSchema,
   loginBodySchema,
   loginResponseSchema,
 } from "./auth.dto";
@@ -22,15 +23,7 @@ export const createAuthRoutes = (
   { authService }: AuthRoutesDependencies,
 ) =>
   new Elysia({ name: "auth-routes", prefix: "/auth" })
-    .use(
-      jwt({
-        name: "accessToken",
-        secret: config.auth.accessTokenSecret,
-        exp: `${config.auth.accessTokenTtlSeconds}s`,
-        iat: true,
-        schema: jwtPayloadSchema,
-      }),
-    )
+    .use(createAccessTokenPlugin(config))
     .post(
       "/login",
       async ({ accessToken, body }) => {

@@ -24,6 +24,14 @@ export const createOpenApiPlugin = (config: AppConfig) =>
           name: "Auth",
           description: "Authentication for internal ACCESS users.",
         },
+        {
+          name: "Complaints",
+          description: "Internal complaint listing, detail, and updates.",
+        },
+        {
+          name: "Quick Responses",
+          description: "Manual agent response sessions for complaints.",
+        },
       ],
       components: {
         securitySchemes: {
@@ -31,7 +39,7 @@ export const createOpenApiPlugin = (config: AppConfig) =>
             type: "http",
             scheme: "bearer",
             bearerFormat: "JWT",
-            description: "Access token returned by POST /api/v1/auth/login.",
+            description: "Access token returned by POST /auth/login.",
           },
         },
       },

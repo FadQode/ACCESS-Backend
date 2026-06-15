@@ -8,7 +8,7 @@ import { errorPlugin } from "./plugins/error.plugin";
 import { loggerPlugin } from "./plugins/logger.plugin";
 import { createOpenApiPlugin } from "./plugins/openapi.plugin";
 import { responsePlugin } from "./plugins/response.plugin";
-import { createApiV1Routes } from "./routes";
+import { createRoutes } from "./routes";
 import { successResponse } from "./shared/http/response";
 
 export interface AppDependencies {
@@ -54,6 +54,6 @@ export const createApp = ({ config, db }: AppDependencies) =>
         },
       },
     )
-    .group("/api/v1", (api) => api.use(createApiV1Routes(config, db)));
+    .use(createRoutes(config, db));
 
 export type App = ReturnType<typeof createApp>;

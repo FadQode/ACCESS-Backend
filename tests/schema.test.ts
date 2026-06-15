@@ -113,6 +113,12 @@ describe("database schema", () => {
     );
   });
 
+  test("indexes complaint creation time for paginated reads", () => {
+    expect(
+      configFor(complaints).indexes.map((index) => index.config.name),
+    ).toContain("complaints_created_at_idx");
+  });
+
   test("enforces expected foreign-key counts", () => {
     expect(configFor(tickets).foreignKeys).toHaveLength(2);
     expect(configFor(quickResponseSessions).foreignKeys).toHaveLength(3);

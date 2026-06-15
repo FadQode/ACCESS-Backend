@@ -22,17 +22,27 @@ The checked-in `.env.example` documents every supported setting. Local secrets
 belong in `.env`, which is ignored by Git. Redis and AI are disabled by default
 and are not required for core complaint-handling workflows.
 
-The API starts at `http://localhost:3000`. Its versioned health endpoint is:
+The API starts at `http://localhost:3000`. Its health endpoint is:
 
 ```txt
-GET /api/v1/health
+GET /health
 ```
 
 Internal seeded users authenticate with bearer JWTs through:
 
 ```txt
-POST /api/v1/auth/login
-GET  /api/v1/auth/me
+POST /auth/login
+GET  /auth/me
+```
+
+Current complaint workflow endpoints:
+
+```txt
+POST  /quick-responses
+GET   /complaints
+GET   /complaints/:id
+PATCH /complaints/:id
+PATCH /complaints/:id/status
 ```
 
 Development users use the password `password123`. Run `bun run db:seed`
@@ -96,16 +106,11 @@ modules/<feature>/
 The intended implementation order and domain boundaries are documented in
 `.agents/AGENTS.MD`.
 
-Current base architecture includes placeholders for:
+Currently implemented business modules:
 
 - `auth`
-- `users`
 - `complaints`
-- `tickets`
-- `quick-response`
-- `action-requests`
-- `documents`
-- `dashboard`
-- `audit`
-- `agent-performance`
-- `ai`
+- `quick-responses`
+- `users` repository support
+
+Future workflow modules remain isolated until their implementation phases.

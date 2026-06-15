@@ -11,7 +11,7 @@ describe("health routes", () => {
     const app = createApp({ config, db: database.db });
 
     const response = await app.handle(
-      new Request("http://localhost/api/v1/health"),
+      new Request("http://localhost/health"),
     );
     const body = await response.json();
 
@@ -36,7 +36,7 @@ describe("health routes", () => {
     const app = createApp({ config, db: database.db });
 
     const response = await app.handle(
-      new Request("http://localhost/api/v1/missing"),
+      new Request("http://localhost/missing"),
     );
     const body = await response.json();
 

@@ -5,6 +5,14 @@ import { loadEnv } from "../src/config/env";
 import { createDatabase } from "../src/db";
 
 interface OpenApiOperation {
+  requestBody?: {
+    content?: Record<
+      string,
+      {
+        schema?: OpenApiSchema;
+      }
+    >;
+  };
   responses?: Record<
     string,
     {
@@ -68,18 +76,30 @@ describe("OpenAPI documentation", () => {
         title: "ACCESS Backend API",
         version: "docs-test",
       });
-      expect(document.paths["/api/v1/health"]?.get?.tags).toEqual(["System"]);
-      expect(document.paths["/api/v1/auth/login"]?.post?.tags).toEqual([
-        "Auth",
-      ]);
+      expect(document.paths["/health"]?.get?.tags).toEqual(["System"]);
+      expect(document.paths["/auth/login"]?.post?.tags).toEqual(["Auth"]);
       expect(
-        document.paths["/api/v1/auth/login"]?.post?.responses?.["200"]
+        document.paths["/auth/login"]?.post?.responses?.["200"]
           ?.content?.["application/json"]?.schema?.properties?.data?.properties
           ?.user?.properties?.role?.enum,
       ).toEqual(["agent", "manager", "admin"]);
-      expect(document.paths["/api/v1/auth/me"]?.get?.security).toEqual([
+      expect(document.paths["/auth/me"]?.get?.security).toEqual([
         { bearerAuth: [] },
       ]);
+      expect(document.paths["/complaints"]?.get?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
+      expect(document.paths["/quick-responses"]?.post?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
+      expect(
+        document.paths["/quick-responses"]?.post?.requestBody?.content?.[
+          "application/json"
+        ]?.schema?.properties?.response?.properties?.outcome?.enum,
+      ).toEqual(["sent_resolved", "sent_hea_action", "copy_only"]);
+      expect(document.paths).not.toHaveProperty("/quick-responses/preview");
+      expect(document.paths).not.toHaveProperty("/tickets");
+      expect(document.paths).not.toHaveProperty("/action-requests");
       expect(document.components?.securitySchemes).toHaveProperty(
         "bearerAuth",
       );

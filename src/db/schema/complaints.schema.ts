@@ -70,6 +70,7 @@ export const complaints = pgTable(
     index("complaints_category_idx").on(table.category),
     index("complaints_status_idx").on(table.status),
     index("complaints_submitted_at_idx").on(table.submittedAt),
+    index("complaints_created_at_idx").on(table.createdAt),
   ],
 );
 

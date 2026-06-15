@@ -1,3 +1,7 @@
+import { jwt } from "@elysiajs/jwt";
+
+import type { AppConfig } from "../config/env";
+import { jwtPayloadSchema } from "../modules/auth/auth.dto";
 import { UnauthorizedError } from "../shared/errors";
 import type { AuthService } from "../modules/auth/auth.service";
 
@@ -8,6 +12,15 @@ export interface VerifiedJwtPayload {
 export interface JwtVerifier {
   verify(token?: string): Promise<VerifiedJwtPayload | false>;
 }
+
+export const createAccessTokenPlugin = (config: AppConfig) =>
+  jwt({
+    name: "accessToken",
+    secret: config.auth.accessTokenSecret,
+    exp: `${config.auth.accessTokenTtlSeconds}s`,
+    iat: true,
+    schema: jwtPayloadSchema,
+  });
 
 export const extractBearerToken = (authorization?: string): string => {
   if (!authorization) {

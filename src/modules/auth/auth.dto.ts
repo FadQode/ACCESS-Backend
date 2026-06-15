@@ -1,5 +1,7 @@
 import { t } from "elysia";
 
+import { apiErrorResponseSchema } from "../../shared/http/schema";
+
 const userRoleSchema = t.Union(
   [t.Literal("agent"), t.Literal("manager"), t.Literal("admin")],
   { description: "Authorization role assigned to the internal user." },
@@ -56,17 +58,7 @@ export const currentUserResponseSchema = t.Object(
   { description: "Authenticated internal user response." },
 );
 
-export const authErrorResponseSchema = t.Object(
-  {
-    success: t.Literal(false),
-    message: t.String(),
-    error: t.Object({
-      code: t.String(),
-      details: t.Optional(t.Unknown()),
-    }),
-  },
-  { description: "Standard authentication error response." },
-);
+export const authErrorResponseSchema = apiErrorResponseSchema;
 
 export const jwtPayloadSchema = t.Object({
   email: t.String({ format: "email" }),

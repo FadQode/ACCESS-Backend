@@ -19,3 +19,19 @@ export const createDatabase = (config: DatabaseConfig) => {
 };
 
 export type Database = ReturnType<typeof createDatabase>["db"];
+export type DatabaseTransaction = Parameters<
+  Parameters<Database["transaction"]>[0]
+>[0];
+export type DatabaseExecutor = Database | DatabaseTransaction;
+
+export interface DatabaseTransactionManager {
+  transaction<T>(
+    callback: (executor: DatabaseExecutor) => Promise<T>,
+  ): Promise<T>;
+}
+
+export const createTransactionManager = (
+  db: Database,
+): DatabaseTransactionManager => ({
+  transaction: (callback) => db.transaction((tx) => callback(tx)),
+});

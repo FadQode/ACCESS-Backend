@@ -1,56 +1,85 @@
-# architecture.md
-
 # ACCESS Backend Architecture Guide
 
 ## 1. Overview
 
-ACCESS is a customer-support workflow system for handling passenger complaints, especially complaints related to transportation services.
+ACCESS is a human-centered customer support workflow system for handling transportation-related complaints.
 
-The backend is designed around a human-centered support process:
+The backend is designed to support agents and managers in processing complaints, preparing responses, coordinating follow-up actions, and tracking resolution history.
+
+The system may later include reference search, response suggestions, RAG, complaint clustering, or AI assistance. However, the core backend must remain usable without AI.
+
+Core principle:
 
 ```txt
-Complaint Intake
-→ Quick Response / Ticket Handling
-→ Escalation
-→ Manager Action Queue
-→ Resolution
-→ Tracking & Metrics
+Humans decide.
+The system records, organizes, guides, and supports.
+AI may assist later, but must not own the workflow.
 ```
-
-The system may later include AI, RAG, complaint clustering, or ML inference. However, the first version must prioritize the business process and remain fully usable without AI.
 
 ---
 
-## 2. Architecture Goals
+## 2. Purpose of This Document
 
-The backend should be designed to be:
+This document defines the stable backend architecture rules for ACCESS.
+
+It should explain:
+
+```txt
+project structure
+module boundaries
+domain ownership
+dependency direction
+database responsibility
+API conventions
+authorization model
+workflow invariants
+extension rules
+```
+
+This document should not be used as a phase-by-phase implementation plan.
+
+Implementation phases may change depending on development progress. Those should be documented separately in:
+
+```txt
+plan.md
+phase-*.md
+implementation notes
+```
+
+Architecture should stay stable even when the implementation order changes.
+
+---
+
+## 3. Architecture Goals
+
+The backend should be:
 
 ```txt
 modular
 business-process-first
 easy to extend
 safe for future AI/RAG integration
-clear for contributors and coding agents
-not over-engineered for v1
+clear for contributors
+clear for coding agents
+not over-engineered too early
 ```
 
-The core backend must support:
+The backend should protect these rules:
 
 ```txt
-public complaint submission
-internal ticket handling
-quick response workflow
-manager-level grouped action queue
-document lookup
-audit/history tracking
-dashboard metrics
+Complaint does not automatically mean ticket.
+Ticket does not mean manager action.
+Manager action request is grouped, not one-by-one ticket reply.
+Reference source is broader than document.
+AI is optional and replaceable.
+Business workflow must survive AI failure.
 ```
 
 ---
 
-## 3. Technology Stack
+## 4. Technology Stack
 
-Recommended stack:
+Current backend stack:
 
 ```txt
 Runtime: Bun
@@ -58,8 +87,10 @@ Framework: Elysia
 Language: TypeScript
 Database: PostgreSQL
 ORM: Drizzle ORM
-Validation: Elysia TypeBox / t
+Migration: Drizzle Kit
+Validation: Elysia TypeBox / t, or Zod if already used consistently
 API Style: REST
+Auth: Bearer JWT
 ```
 
 Optional future stack:
@@ -71,11 +102,20 @@ RAG Storage: pgvector or external vector database
 Background Jobs: worker service
 ```
 
-The backend should not require AI, ML, queue workers, or vector search for v1.
+The core backend must not require these to work:
+
+```txt
+AI service
+ML service
+queue worker
+vector database
+embedding job
+RAG retrieval
+```
 
 ---
 
-## 4. Architectural Style
+## 5. Architectural Style
 
 Use feature-based architecture.
 
@@ -94,24 +134,24 @@ modules/
   auth/
   users/
   complaints/
+  quick-responses/
+  references/
   tickets/
-  quick-response/
   action-requests/
-  documents/
   dashboard/
   audit/
   agent-performance/
   ai/
 ```
 
-Each module should own its own related files:
+Each module owns its related files:
 
 ```txt
 routes
 dto
 service
 repository
-entity/types
+types
 ```
 
 Recommended module structure:
@@ -123,12 +163,20 @@ modules/
     complaints.service.ts
     complaints.repository.ts
     complaints.dto.ts
-    complaints.entity.ts
+    complaints.types.ts
+```
+
+Use plural module names when the route/resource is plural:
+
+```txt
+quick-responses/
+references/
+action-requests/
 ```
 
 ---
 
-## 5. Main Folder Structure
+## 6. Main Folder Structure
 
 Recommended backend structure:
 
@@ -147,22 +195,23 @@ src/
       index.ts
       users.schema.ts
       complaints.schema.ts
-      tickets.schema.ts
       quick-response.schema.ts
+      references.schema.ts
+      tickets.schema.ts
       action-requests.schema.ts
-      documents.schema.ts
       ticket-events.schema.ts
       audit-logs.schema.ts
       agent-performance.schema.ts
       relations.ts
+
     seed/
       index.ts
       users.seed.ts
       complaints.seed.ts
+      quick-responses.seed.ts
+      references.seed.ts
       tickets.seed.ts
-      quick-response.seed.ts
       action-requests.seed.ts
-      documents.seed.ts
       ticket-events.seed.ts
       agent-performance.seed.ts
 
@@ -175,39 +224,59 @@ src/
   shared/
     constants/
     errors/
+    responses/
     types/
     utils/
+      reference-number.ts
+      tracking-token.ts
+      normalize-text.ts
 
   modules/
     auth/
     users/
     complaints/
+    quick-responses/
+    references/
     tickets/
-    quick-response/
     action-requests/
-    documents/
     dashboard/
     audit/
     agent-performance/
     ai/
 ```
 
+Important rule:
+
+```txt
+Do not create a long-term documents module.
+Use references module instead.
+```
+
+Reason:
+
+```txt
+The support knowledge source is not always a document.
+It can be SOP, FAQ, policy, template, known issue, previous action, uploaded file, external link, or internal note.
+```
+
 ---
 
-## 6. Layer Responsibilities
+## 7. Layer Responsibilities
 
 Each module should follow this responsibility split:
 
 ```txt
 routes       → HTTP request/response layer
-dto          → request and response validation shape
+dto          → request/query/params validation
 service      → business rules and workflow decisions
 repository   → database access only
-entity       → domain-facing types
-db/schema    → Drizzle database table definitions
+types        → domain-facing TypeScript types
+db/schema    → Drizzle table definitions
 ```
 
-### Routes
+---
+
+### 7.1 Routes
 
 Routes should be thin.
 
@@ -226,47 +295,51 @@ Routes should not:
 perform direct database queries
 contain complex business rules
 duplicate workflow decisions
-manually build unrelated module behavior
+manually orchestrate unrelated modules
 ```
 
 ---
 
-### DTOs
+### 7.2 DTOs
 
-DTOs define the external API contract.
+DTOs define external API contracts.
 
-DTO files should contain:
+DTO files may contain:
 
 ```txt
 request body schema
 query schema
 params schema
-response shape if needed
+response shape if useful
 ```
 
-DTOs should protect services from raw, invalid, or incomplete input.
+DTOs protect services from raw, invalid, or incomplete input.
 
 ---
 
-### Services
+### 7.3 Services
 
 Services own business rules.
 
-Services should decide things like:
+Services should decide:
 
 ```txt
-can this complaint become a ticket?
-can this ticket be closed?
-should this quick response create a ticket?
-should this complaint be linked to an action request?
+what status should be set?
+can this user perform this action?
+should this response resolve the complaint?
+should this complaint require follow-up?
+should this complaint become a ticket?
+should this complaint be linked to manager action?
 what status transition is valid?
 ```
 
 Services may call repositories and other services when needed.
 
+For cross-module workflows, prefer a clear orchestration service or a top-level service method rather than spreading workflow logic across many route files.
+
 ---
 
-### Repositories
+### 7.4 Repositories
 
 Repositories own database access.
 
@@ -277,53 +350,190 @@ select data
 insert data
 update data
 delete/archive data
-perform database joins
+perform joins
+support transactions when needed
 ```
 
 Repositories should not contain business decisions.
 
----
-
-### Entities / Types
-
-Entity files define domain-facing types.
-
-These types represent how the module understands its own data internally.
-
-They should not depend on HTTP request details.
-
----
-
-## 7. Core Domain Separation
-
-The backend must preserve this domain separation:
+Bad repository responsibility:
 
 ```txt
-Complaint = original passenger issue
-Ticket = internal agent work item
-Quick Response Session = response composition/action session
-Action Request = manager-level grouped issue
-Document = support knowledge source
-Ticket Event = ticket timeline
-Audit Log = accountability record
-Agent Performance = derived metric snapshot
-AI = optional assistant
+deciding whether a complaint should become a ticket
+deciding whether a manager action is required
+deciding whether response outcome means resolved
 ```
 
-This separation is the most important architectural rule in the project.
+Good repository responsibility:
+
+```txt
+insert complaint
+find complaint by id
+update complaint status
+find quick response sessions by complaint id
+```
 
 ---
 
-## 8. Core Modules
+### 7.5 Types
 
-## 8.1 Auth Module
+Type files define domain-facing TypeScript types.
+
+Types should describe how a module understands its own data internally.
+
+Types should not depend on HTTP request details.
+
+---
+
+## 8. Core Domain Model
+
+The backend must preserve this separation:
+
+```txt
+Complaint
+  original customer/passenger issue
+
+Quick Response Session
+  one agent response/action session for a complaint
+
+Reference Source
+  reusable internal source of support information
+
+Quick Response Reference
+  reference shown or used in a quick response session
+
+Ticket
+  internal agent work item when follow-up is needed
+
+Action Request
+  manager-level grouped issue
+
+Action Request Complaint
+  join table connecting manager action request to complaints/tickets
+
+Action Request Reference
+  evidence/source attached to manager action
+
+Ticket Event
+  timeline/history for a ticket
+
+Audit Log
+  system accountability record
+
+Agent Performance
+  derived metric snapshot
+
+AI
+  optional future assistant
+```
+
+This is the most important architecture rule in the project.
+
+---
+
+## 9. Domain Invariants
+
+These rules should remain true regardless of implementation order.
+
+### Complaint
+
+```txt
+Complaint is the original customer issue.
+Complaint can exist without ticket.
+Complaint can have many quick response sessions.
+Complaint may later become a ticket.
+Complaint may later be linked to an action request.
+Complaint can be resolved directly if enough information/action exists.
+```
+
+---
+
+### Quick Response Session
+
+```txt
+Quick Response Session must belong to one complaint.
+Quick Response Session must belong to one agent.
+Quick Response Session may optionally belong to one ticket.
+Quick Response Session stores what the agent wrote/saved/sent.
+Quick Response Session does not automatically mean the case is resolved.
+```
+
+---
+
+### Ticket
+
+```txt
+Ticket is an internal agent work item.
+Not every complaint should become a ticket.
+Ticket exists when a complaint needs internal follow-up.
+Ticket belongs to one complaint.
+Ticket may have many quick response sessions.
+Ticket status should represent internal operational progress.
+```
+
+---
+
+### Action Request
+
+```txt
+Action Request is a manager-level grouped issue.
+Managers should handle grouped problems, not individual ticket replies one by one.
+One action request can cover many complaints.
+One action request can involve many tickets.
+Action request stores manager action_taken and closure_message.
+```
+
+---
+
+### Reference Source
+
+```txt
+Reference Source is a reusable source of information.
+Reference Source is broader than document.
+Reference Source can support agent response or manager action.
+Reference Source can be searched or attached later.
+```
+
+Examples:
+
+```txt
+SOP
+FAQ
+policy
+guide
+template
+known_issue
+external_link
+uploaded_file
+previous_action
+internal_note
+```
+
+---
+
+### AI
+
+```txt
+AI is optional.
+AI can suggest, classify, search, summarize, or cluster.
+AI must not be required to save complaints.
+AI must not be required to create tickets.
+AI must not be required to resolve complaints.
+AI failure should not break the core workflow.
+```
+
+---
+
+## 10. Core Modules
+
+## 10.1 Auth Module
 
 Purpose:
 
 ```txt
 authentication
 current user retrieval
-role-based access support
+basic role-based access support
 ```
 
 Auth handles internal users only:
@@ -334,11 +544,24 @@ manager
 admin
 ```
 
-Public complaint submitters do not need full user accounts in v1.
+Current auth style:
+
+```txt
+Bearer JWT
+```
+
+Main endpoints:
+
+```txt
+POST /auth/login
+GET /auth/me
+```
+
+Public complaint submitters do not need internal user accounts.
 
 ---
 
-## 8.2 Users Module
+## 10.2 Users Module
 
 Purpose:
 
@@ -352,93 +575,161 @@ active/inactive user status
 
 Users represent internal ACCESS staff, not passengers.
 
+Early implementation may create users only through seeders.
+
 ---
 
-## 8.3 Complaints Module
+## 10.3 Complaints Module
 
 Purpose:
 
 ```txt
-raw passenger complaint intake
-public complaint submission
-external complaint registration
-complaint status
-complaint tracking
+store original complaints
+list complaints
+view complaint detail
+update complaint basic fields
+update complaint status
+prepare future public tracking
 ```
 
-A complaint is the original issue from the passenger.
+Complaint has:
+
+```txt
+reference_no
+tracking_token
+source
+category
+complaint_text
+status
+submitted_at
+resolved_at
+```
 
 Important rule:
 
 ```txt
-A complaint may become a ticket, but does not always have to.
+A complaint may become a ticket, but does not automatically become a ticket.
 ```
 
-A complaint can be:
+Possible complaint sources:
 
 ```txt
-resolved directly through Quick Response
-converted into a Ticket
-grouped into an Action Request
-tracked publicly using reference number and tracking token
+quick response workspace
+public complaint form
+social media
+app review
+manual import
+external integration
 ```
 
 ---
 
-## 8.4 Tickets Module
+## 10.4 Quick Responses Module
 
 Purpose:
 
 ```txt
-internal agent handling workflow
+manual response session storage
+response outcome storage
+future response preview/suggestion
+future reference usage tracking
+```
+
+A Quick Response Session stores:
+
+```txt
+agent_id
+complaint_id
+optional ticket_id
+selected_hear
+selected_empathize
+selected_apologize
+selected_take_action
+final_response
+outcome
+```
+
+Allowed stable outcomes:
+
+```txt
+sent_resolved
+sent_hea_action
+copy_only
+```
+
+Future outcomes may include:
+
+```txt
+saved_ticket
+escalated
+```
+
+Use future outcomes only when the related workflow exists.
+
+---
+
+## 10.5 References Module
+
+Purpose:
+
+```txt
+store reusable support information
+search support information
+tag support information
+support future suggestion pipeline
+support manager action evidence
+```
+
+Reference module replaces older document-focused design.
+
+Core reference tables:
+
+```txt
+reference_sources
+reference_tags
+reference_source_tags
+```
+
+Future contextual reference tables:
+
+```txt
+quick_response_references
+action_request_references
+```
+
+Important rule:
+
+```txt
+Do not store all search results as used references.
+Only store references that were shown, attached, selected, or used according to the relevant workflow rule.
+```
+
+---
+
+## 10.6 Tickets Module
+
+Purpose:
+
+```txt
+internal agent follow-up workflow
 ticket inbox
 ticket assignment
 ticket status tracking
-HEA/HEAT response storage
 closure handling
 ticket event history
 ```
 
-A ticket is created when a complaint requires internal handling.
+Ticket is created when a complaint needs internal handling.
 
 Important rule:
 
 ```txt
-A ticket should not represent every complaint automatically.
+Ticket should not be created for every complaint by default.
 ```
-
-Tickets are operational work items for agents.
 
 ---
 
-## 8.5 Quick Response Module
-
-Purpose:
-
-```txt
-fast handling of external complaints
-response composition
-HEA/HEAT response drafting
-copy/resolve/save/escalate outcomes
-```
-
-Quick Response supports complaints from:
-
-```txt
-social media
-app review
-DM
-public external source
-internal ticket page
-```
-
-A Quick Response Session must belong to a complaint.
-
-It may optionally belong to a ticket.
-
----
-
-## 8.6 Action Requests Module
+## 10.7 Action Requests Module
 
 Purpose:
 
@@ -449,14 +740,12 @@ manager-level issue resolution
 closure message preparation
 ```
 
-Managers should not primarily handle individual tickets one by one.
-
 Managers handle grouped issues.
 
 Example:
 
 ```txt
-Many passengers report payment deducted but ticket not issued.
+Many customers report payment deducted but ticket not issued.
 ```
 
 This becomes one manager action request linked to many complaints and possibly many tickets.
@@ -466,63 +755,45 @@ Important rule:
 ```txt
 Action Request = grouped manager issue.
 Ticket = individual agent work item.
-Complaint = original passenger issue.
+Complaint = original customer issue.
 ```
 
 ---
 
-## 8.7 Documents Module
-
-Purpose:
-
-```txt
-SOP storage
-FAQ storage
-policy storage
-guide storage
-template storage
-known issue storage
-document search
-document tagging
-document references
-```
-
-For v1, document lookup should use normal database search:
-
-```txt
-category
-doc_type
-status
-title
-search_text
-tags
-content
-```
-
-Do not require RAG in v1.
-
-Documents should help agents answer complaints more consistently.
-
----
-
-## 8.8 Dashboard Module
+## 10.8 Dashboard Module
 
 Purpose:
 
 ```txt
 read-only summary metrics
-agent dashboard
-manager dashboard
+agent dashboard data
+manager dashboard data
 operational overview
 ```
 
 Dashboard should aggregate from other modules.
 
-Dashboard must not own complaint, ticket, or action request workflow logic.
+Dashboard must not own workflow logic.
+
+Bad:
+
+```txt
+Dashboard service creates ticket.
+Dashboard service closes complaint.
+Dashboard service updates action request.
+```
+
+Good:
+
+```txt
+Dashboard service reads complaint counts.
+Dashboard service reads ticket status summary.
+Dashboard service reads action request statistics.
+```
 
 ---
 
-## 8.9 Audit Module
+## 10.9 Audit Module
 
 Purpose:
 
@@ -538,17 +809,25 @@ Examples:
 
 ```txt
 complaint status changed
+quick response saved
 ticket created
 ticket assigned
 ticket escalated
 action request resolved
-document archived
+reference archived
 user deactivated
+```
+
+Audit logs should use polymorphic-style reference:
+
+```txt
+entity_type
+entity_id
 ```
 
 ---
 
-## 8.10 Agent Performance Module
+## 10.10 Agent Performance Module
 
 Purpose:
 
@@ -561,27 +840,30 @@ workflow compliance metrics
 
 Agent performance is derived data.
 
-It should be calculated from source-of-truth workflow tables such as:
+It should be calculated from source-of-truth workflow tables, such as:
 
 ```txt
-tickets
+complaints
 quick_response_sessions
+tickets
 ticket_events
 action_request_complaints
 ```
 
+Agent performance must not become the workflow source of truth.
+
 ---
 
-## 8.11 AI Module
+## 10.11 AI Module
 
 Purpose:
 
 ```txt
 optional AI boundary
-mock suggestions for v1
 future LLM provider integration
 future FastAPI ML service integration
-future RAG/clustering/classification
+future RAG integration
+future clustering/classification
 ```
 
 AI should be isolated behind a provider boundary.
@@ -591,57 +873,90 @@ Core business modules should not directly depend on external AI services.
 Important rule:
 
 ```txt
-AI failure must not break complaint, ticket, quick response, or manager action workflows.
+AI failure must not break complaint, quick response, ticket, or manager action workflows.
 ```
 
 ---
 
-## 9. Database Architecture
+## 11. Database Architecture
 
-The v1 database should include these main tables:
+Database schemas live in:
 
 ```txt
-users
-complaints
-tickets
-quick_response_sessions
-action_requests
-action_request_complaints
-context_documents
-document_tags
-context_document_tags
-document_references
-ticket_events
-audit_logs
-agent_performance
+src/db/schema/
 ```
 
-RAG-related tables are postponed.
-
-Do not add these in v1 unless explicitly requested:
+Each schema file should map to a domain area:
 
 ```txt
-rag_sources
-rag_chunks
-rag_retrievals
-embedding_jobs
-ml_inference_logs
+users.schema.ts
+complaints.schema.ts
+quick-response.schema.ts
+references.schema.ts
+tickets.schema.ts
+action-requests.schema.ts
+ticket-events.schema.ts
+audit-logs.schema.ts
+agent-performance.schema.ts
+relations.ts
+```
+
+Database schema ownership:
+
+```txt
+users.schema.ts
+  users
+
+complaints.schema.ts
+  complaints
+
+quick-response.schema.ts
+  quick_response_sessions
+  quick_response_references
+
+references.schema.ts
+  reference_sources
+  reference_tags
+  reference_source_tags
+
+tickets.schema.ts
+  tickets
+
+action-requests.schema.ts
+  action_requests
+  action_request_complaints
+  action_request_references
+
+ticket-events.schema.ts
+  ticket_events
+
+audit-logs.schema.ts
+  audit_logs
+
+agent-performance.schema.ts
+  agent_performance
+```
+
+Important:
+
+```txt
+Do not use context_documents, document_tags, context_document_tags, or document_references as the long-term model.
+Use reference-based schema instead.
 ```
 
 ---
 
-## 10. Relationship Model
+## 12. Relationship Model
 
 ### Users
 
 A user can:
 
 ```txt
-handle tickets
 run quick response sessions
+create reference sources
+handle tickets
 manage action requests
-upload documents
-reference documents
 create ticket events
 create audit logs
 have performance snapshots
@@ -654,27 +969,15 @@ have performance snapshots
 A complaint can:
 
 ```txt
-be submitted publicly
-be tracked publicly
+be created from Quick Response
+be submitted publicly later
+be listed and viewed internally
 be resolved directly
-become one ticket
+wait for follow-up action
 have many quick response sessions
-be grouped into manager action requests
-```
-
----
-
-### Tickets
-
-A ticket:
-
-```txt
-belongs to one complaint
-may be assigned to one agent
-may have many quick response sessions
-may be linked to action requests through a join table
-may reference documents
-has many ticket events
+become one ticket later
+be grouped into manager action requests later
+be tracked publicly later
 ```
 
 ---
@@ -690,7 +993,36 @@ may belong to one ticket
 stores selected response parts
 stores final response
 stores final outcome
-may reference documents
+may have references later
+```
+
+---
+
+### Reference Sources
+
+A reference source:
+
+```txt
+is created by a user
+has one source type
+may have one category
+may have many tags
+may support quick response
+may support manager action
+```
+
+---
+
+### Tickets
+
+A ticket:
+
+```txt
+belongs to one complaint
+may be assigned to one agent
+may have many quick response sessions
+may be linked to action requests through a join table
+has many ticket events
 ```
 
 ---
@@ -705,6 +1037,7 @@ groups many complaints
 may involve many tickets
 stores manager action result
 stores closure message
+may have references/evidence attached
 ```
 
 Action requests connect to complaints and tickets through:
@@ -712,22 +1045,6 @@ Action requests connect to complaints and tickets through:
 ```txt
 action_request_complaints
 ```
-
----
-
-### Documents
-
-A document:
-
-```txt
-is uploaded by a user
-has one category
-may have many tags
-may be referenced in tickets
-may be referenced in quick response sessions
-```
-
-Documents are the v1 knowledge source before RAG exists.
 
 ---
 
@@ -741,8 +1058,8 @@ Examples:
 created
 assigned
 hea_sent
-escalated
 manager_action_linked
+manager_action_done
 resolved
 closed
 reopened
@@ -754,85 +1071,123 @@ reopened
 
 Audit logs record accountability across the system.
 
-They use a polymorphic-style reference:
+They use:
 
 ```txt
 entity_type
 entity_id
 ```
 
-This allows the audit log to point to different entities such as:
+This allows the audit log to point to different entities:
 
 ```txt
-tickets
 complaints
-users
-documents
-action_requests
 quick_response_sessions
+tickets
+users
+reference_sources
+action_requests
 ```
 
 ---
 
-## 11. Business Workflow Architecture
+## 13. Workflow Architecture
 
-## 11.1 Public Complaint Flow
+## 13.1 Manual Quick Response Save Flow
 
 ```txt
-Passenger submits complaint
-→ backend creates complaint
-→ backend generates reference number
-→ backend generates tracking token
-→ complaint becomes visible to agents
+Agent inputs complaint in Quick Response workspace
+→ Agent manually writes or edits response
+→ Backend creates complaint
+→ Backend creates quick_response_session
+→ Backend maps outcome to complaint status
 ```
 
-The complaint does not need to become a ticket immediately.
-
----
-
-## 11.2 Agent Ticket Flow
+Status mapping:
 
 ```txt
-Agent reviews complaint
-→ complaint may be converted into ticket
-→ ticket is assigned
-→ agent sends HEA/HEAT response
-→ ticket may be resolved or escalated
-→ ticket history is recorded
+outcome = sent_resolved
+→ complaint.status = resolved
+→ complaint.resolved_at = now
+
+outcome = sent_hea_action
+→ complaint.status = waiting_action
+→ complaint.resolved_at = null
+
+outcome = copy_only
+→ complaint.status = submitted
+→ complaint.resolved_at = null
 ```
 
----
-
-## 11.3 Quick Response Flow
+Important:
 
 ```txt
-Agent inputs external complaint
-→ system stores complaint
-→ quick response session is created
-→ agent prepares response
-→ agent chooses final outcome
-```
-
-Possible outcomes:
-
-```txt
-copy_only
-sent_resolved
-sent_hea_action
-saved_ticket
-escalated
+Saving a quick response does not automatically mean ticket exists.
 ```
 
 ---
 
-## 11.4 Manager Action Queue Flow
+## 13.2 References Flow
 
 ```txt
-similar complaints are grouped
+Agent or system searches reference_sources
+→ backend filters by category, source_type, tags, or search text
+→ useful references are shown
+→ selected/shown/used references may be recorded by contextual reference tables
+```
+
+Reference search should work without RAG.
+
+---
+
+## 13.3 Suggestion Pipeline Flow
+
+```txt
+Agent inputs complaint text
+→ backend searches references
+→ backend scores candidate references
+→ backend builds response suggestion
+→ backend returns preview
+→ no database write during preview
+```
+
+Preview rule:
+
+```txt
+Preview is read-only.
+```
+
+Saving rule:
+
+```txt
+Saving happens through the normal quick response save flow.
+```
+
+---
+
+## 13.4 Follow-up Workflow
+
+```txt
+Quick response outcome indicates follow-up is needed
+→ backend creates ticket
+→ backend finds or creates action request
+→ backend links complaint/ticket to action_request_complaints
+→ complaint waits for manager action
+```
+
+This workflow should be implemented when ticket and action request modules exist.
+
+---
+
+## 13.5 Manager Action Queue Flow
+
+```txt
+Similar complaints are grouped
 → action request is created
 → manager reviews issue
-→ manager records action taken
-→ manager writes closure message
+→ manager records action_taken
+→ manager writes closure_message
+→ references/evidence can be attached
 → linked tickets/complaints are updated
 ```
 
@@ -840,59 +1195,62 @@ Managers handle grouped issues, not individual ticket replies.
 
 ---
 
-## 11.5 Document Lookup Flow
+## 13.6 Final Closure Flow
 
 ```txt
-Agent searches document
-→ backend searches context documents by category/tags/search text
-→ agent opens useful SOP/FAQ/template
-→ agent may reference document in ticket or quick response
+Manager provides Take Action
+→ linked tickets become ready for closure
+→ agent sends final response
+→ quick_response_session records final response
+→ ticket is closed
+→ complaint is resolved
 ```
-
-This flow works without RAG.
 
 ---
 
-## 12. API Architecture
+## 14. API Architecture
 
-Use REST routes with this prefix:
+Use REST routes.
 
-```txt
-/api/v1
-```
-
-Recommended route groups:
+Current convention:
 
 ```txt
-/api/v1/auth
-/api/v1/users
-/api/v1/complaints
-/api/v1/tickets
-/api/v1/quick-responses
-/api/v1/action-requests
-/api/v1/documents
-/api/v1/dashboard
-/api/v1/agent-performance
+Do not use /api/v1 prefix unless versioning becomes necessary.
 ```
 
-Public route group:
+Reason:
 
 ```txt
-/api/v1/public/complaints
+The project is still early and there is no concrete v2 need yet.
+Keep route paths simple.
 ```
 
-Public routes should only expose:
+Main route groups:
 
 ```txt
-complaint submission
-complaint tracking
+/auth
+/users
+/complaints
+/quick-responses
+/references
+/tickets
+/action-requests
+/dashboard
+/agent-performance
 ```
 
-Internal routes require authentication.
+Public route groups may be added later:
+
+```txt
+/public/complaints
+/track
+```
+
+Internal routes require authentication unless explicitly public.
 
 ---
 
-## 13. Response Architecture
+## 15. Response Architecture
 
 Use a consistent response format.
 
@@ -924,19 +1282,23 @@ Paginated response:
 {
   "success": true,
   "message": "Data retrieved successfully",
-  "data": [],
-  "meta": {
-    "page": 1,
-    "limit": 10,
-    "total": 100,
-    "totalPages": 10
+  "data": {
+    "items": [],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 100,
+      "totalPages": 10
+    }
   }
 }
 ```
 
+Keep response shape predictable across modules.
+
 ---
 
-## 14. Error Handling Architecture
+## 16. Error Handling Architecture
 
 Use centralized error handling.
 
@@ -955,9 +1317,11 @@ ConflictError
 
 The error plugin should convert internal errors into consistent API responses.
 
+Routes should not manually format every error.
+
 ---
 
-## 15. Authorization Architecture
+## 17. Authorization Architecture
 
 Roles:
 
@@ -970,42 +1334,44 @@ public
 
 ### Admin
 
-Can:
+Can generally:
 
 ```txt
+manage internal data
 manage users
-manage system configuration
-manage documents
+manage references
 view broad system data
+perform operational overrides
 ```
 
 ### Manager
 
-Can:
+Can generally:
 
 ```txt
 view manager dashboard
-manage action requests
 review grouped complaints
+manage action requests
 update manager action status
 view team performance
 ```
 
 ### Agent
 
-Can:
+Can generally:
 
 ```txt
-view assigned/relevant complaints
-handle tickets
+handle complaints
 run quick response sessions
-reference documents
-escalate issues to manager action queue
+handle tickets
+send responses
+request manager action
+view relevant support references
 ```
 
 ### Public User
 
-Can:
+Can eventually:
 
 ```txt
 submit complaint
@@ -1021,60 +1387,124 @@ internal users
 audit logs
 manager dashboard
 agent performance
+internal references
 ```
+
+Authorization should be enforced in services or route guards, not only in the frontend.
 
 ---
 
-## 16. Document Lookup Architecture
+## 18. Transaction Architecture
 
-Document lookup is the v1 knowledge strategy.
+Use database transactions for workflows that must be atomic.
 
-Documents should be searchable through:
+Examples:
 
 ```txt
+create complaint + quick_response_session
+create ticket + action_request link
+close ticket + resolve complaint
+manager action update + update linked tickets
+```
+
+If one step fails, the whole operation should roll back.
+
+Repositories should accept a transaction object when needed.
+
+Services should decide when to open transactions.
+
+---
+
+## 19. Status Management Architecture
+
+Status changes should be owned by services.
+
+Avoid duplicating status transition rules across routes.
+
+Examples:
+
+```txt
+Quick Responses Service maps response outcome to complaint status.
+Tickets Service controls ticket status transitions.
+Action Requests Service controls manager action status.
+Complaints Service controls manual complaint status updates.
+```
+
+Do not let routes directly decide complex status transitions.
+
+---
+
+## 20. Reference Architecture
+
+Reference is the long-term support knowledge model.
+
+Do not model support knowledge as only documents.
+
+Reference source fields may include:
+
+```txt
+source_type
 title
 category
-doc_type
-status
-tags
-search_text
 content
+url
+file_url
+status
+version
+search_text
+metadata
 ```
 
-This allows the system to recommend or display related documents without full AI/RAG.
-
-Example:
+Reference source types may include:
 
 ```txt
-Complaint category: payment
-Search query: saldo terpotong
-
-Possible documents:
-- SOP Refund Saldo Terpotong
-- FAQ Pembayaran Gagal
-- Known Issue Payment Gateway Timeout
+sop
+faq
+policy
+guide
+template
+known_issue
+external_link
+uploaded_file
+previous_action
+internal_note
 ```
 
-Document references should be recorded when agents use documents during support work.
+Contextual reference usage should be stored separately:
+
+```txt
+quick_response_references
+action_request_references
+```
+
+Why separate?
+
+```txt
+reference_sources = reusable source
+quick_response_references = source used/shown in an agent response
+action_request_references = source/evidence attached to manager action
+```
 
 ---
 
-## 17. Future AI/RAG Architecture
+## 21. AI/RAG Architecture
 
-AI/RAG should be added later as an extension.
+AI/RAG should be added as an extension.
 
-Future possible tables:
+Possible future tables:
 
 ```txt
 rag_sources
 rag_chunks
 rag_retrievals
+embedding_jobs
+ml_inference_logs
 ```
 
-Future possible sources:
+Possible future sources:
 
 ```txt
-context documents
+reference_sources
 resolved tickets
 approved quick responses
 manager-approved action requests
@@ -1087,8 +1517,6 @@ Important RAG rule:
 RAG should retrieve from a controlled knowledge layer,
 not freely query every operational table.
 ```
-
-AI should enrich the workflow, not own it.
 
 Correct design:
 
@@ -1110,7 +1538,7 @@ manager action queue cannot work unless AI is online
 
 ---
 
-## 18. Dependency Direction
+## 22. Dependency Direction
 
 Prefer this dependency direction:
 
@@ -1121,24 +1549,24 @@ routes → services → repositories → db schema
 Allowed service collaboration:
 
 ```txt
-Quick Response Service → Complaints Service
-Quick Response Service → Tickets Service
+Quick Responses Service → Complaints Service
+Quick Responses Service → References Service
 Tickets Service → Complaints Service
 Tickets Service → Action Requests Service
 Action Requests Service → Tickets/Complaints repositories
-Documents Service → Document repositories
+References Service → Reference repositories
 Dashboard Service → read-only repositories
 ```
 
 Avoid circular dependencies.
 
-If two modules need each other too much, move the shared workflow into a higher-level orchestration function or rethink the boundary.
+If two modules need each other too much, move shared workflow into a higher-level orchestration service or rethink the boundary.
 
 ---
 
-## 19. Logging and History
+## 23. Logging and History
 
-Use two types of history:
+Use different logs for different purposes.
 
 ```txt
 ticket_events
@@ -1149,7 +1577,17 @@ audit_logs
 
 Used for ticket timeline and support workflow history.
 
-Visible or useful to support staff.
+Useful for support staff.
+
+Examples:
+
+```txt
+ticket created
+HEA sent
+linked to manager action
+manager action done
+ticket closed
+```
 
 ### Audit Logs
 
@@ -1157,29 +1595,37 @@ Used for accountability and system-level change tracking.
 
 Useful for debugging, compliance, and admin review.
 
+Examples:
+
+```txt
+user changed complaint status
+manager changed action request closure message
+admin archived reference source
+agent saved quick response
+```
+
 ---
 
-## 20. Seeder Architecture
+## 24. Seeder Architecture
 
 Seeders should create realistic demo data.
 
-Seed data should include:
+Seed data should include, depending on implemented modules:
 
 ```txt
 admin user
 manager users
 agent users
 sample complaints
+sample quick response sessions
+sample references
 sample tickets
-quick response sessions
-manager action requests
-context documents
-document tags
-ticket events
+sample action requests
+sample ticket events
 agent performance snapshots
 ```
 
-Seed examples should reflect real passenger complaints:
+Seed examples should reflect realistic complaints:
 
 ```txt
 saldo terpotong tapi tiket tidak muncul
@@ -1190,11 +1636,13 @@ aplikasi error saat pembayaran
 fasilitas stasiun bermasalah
 ```
 
-Avoid random placeholder data that does not demonstrate the workflow.
+Avoid random placeholder data that does not demonstrate workflow.
+
+Seeders should be safe to rerun when practical.
 
 ---
 
-## 21. Development Principles
+## 25. Development Principles
 
 When adding a new feature:
 
@@ -1206,83 +1654,110 @@ When adding a new feature:
 5. Keep database access in repository.
 6. Add schema changes through migration.
 7. Add seed data if useful for demo.
-8. Add audit/event records for important workflow changes.
+8. Add audit/event records for important workflow changes when the audit/event module exists.
 ```
 
 When unsure where something belongs, ask:
 
 ```txt
 Is this about the original complaint?
-Is this about agent work?
-Is this about quick response composition?
+Is this about an agent response session?
+Is this about internal follow-up work?
 Is this about grouped manager action?
-Is this about support knowledge?
+Is this about reusable support knowledge?
 Is this only analytics?
 Is this optional AI assistance?
 ```
 
 ---
 
-## 22. What Not To Do
+## 26. What Not To Do
 
 Do not:
 
 ```txt
 make every complaint automatically become a ticket
 make manager action requests behave like individual tickets
-put dashboard logic inside ticket service
+put dashboard workflow logic inside dashboard service
 put database queries directly in route files
 make AI mandatory for core workflow
-add RAG tables before document lookup is stable
+add RAG tables before reference foundation is stable
 use one giant service for all workflow logic
 duplicate status transition rules across modules
 allow public routes to expose internal support data
+treat documents as the only knowledge source
+store all search results as used references
 ```
 
 ---
 
-## 23. Implementation Priority
+## 27. Architecture vs Plan
 
-Recommended build order:
+Use this document for stable architectural decisions:
 
 ```txt
-1. Project foundation
-2. Database schema
-3. Auth and users
-4. Complaints
-5. Tickets
-6. Quick Response
-7. Action Requests
-8. Documents
-9. Ticket Events and Audit Logs
-10. Dashboard
-11. Agent Performance
-12. Optional AI/RAG extension
+module boundaries
+domain definitions
+dependency direction
+authorization model
+workflow invariants
+database ownership
+API style
+extension rules
 ```
 
-The backend should be useful before AI exists.
+Use separate plan documents for volatile implementation details:
+
+```txt
+current phase scope
+endpoint build order
+temporary limitations
+migration sequence
+manual testing checklist
+acceptance checklist
+```
+
+Examples:
+
+```txt
+ARCHITECTURE.md
+  stable system guide
+
+PHASE-2.md
+  current implementation plan
+
+SCHEMA_IMPLEMENTATION.md
+  database implementation plan
+
+plan.md
+  short-term task plan
+```
+
+If a phase changes, update the phase plan.
+
+If a domain boundary changes, update this architecture guide.
 
 ---
 
-## 24. Final Architecture Summary
+## 28. Final Architecture Summary
 
 ACCESS backend is built around this mental model:
 
 ```txt
 Complaint
-  original passenger issue
+  original customer issue
+
+Quick Response Session
+  agent response/action session
+
+Reference Source
+  reusable support knowledge source
 
 Ticket
   internal agent work item
 
-Quick Response Session
-  agent response composition/action session
-
 Action Request
   manager-level grouped issue
-
-Document
-  support knowledge source
 
 Ticket Event
   ticket timeline
@@ -1298,3 +1773,11 @@ AI
 ```
 
 Protect this model when implementing new features.
+
+The safest rule:
+
+```txt
+Save the business data first.
+Let humans continue the workflow.
+Add automation only as assistance.
+```
