@@ -1,0 +1,109 @@
+import { describe, expect, test } from "bun:test";
+
+import { createApp } from "../src/app";
+import { loadEnv } from "../src/config/env";
+import { createDatabase } from "../src/db";
+
+interface OpenApiOperation {
+  responses?: Record<
+    string,
+    {
+      content?: Record<
+        string,
+        {
+          schema?: OpenApiSchema;
+        }
+      >;
+    }
+  >;
+  security?: Array<Record<string, string[]>>;
+  tags?: string[];
+}
+
+interface OpenApiSchema {
+  enum?: string[];
+  properties?: Record<string, OpenApiSchema>;
+}
+
+interface OpenApiDocument {
+  openapi: string;
+  info: {
+    title: string;
+    version: string;
+  };
+  components?: {
+    securitySchemes?: Record<string, unknown>;
+  };
+  paths: Record<
+    string,
+    {
+      get?: OpenApiOperation;
+      post?: OpenApiOperation;
+    }
+  >;
+}
+
+describe("OpenAPI documentation", () => {
+  test("serves Scalar and a documented bearer-auth API contract", async () => {
+    const config = loadEnv({ NODE_ENV: "test", APP_VERSION: "docs-test" });
+    const database = createDatabase(config.database);
+    const app = createApp({ config, db: database.db });
+
+    try {
+      const scalarResponse = await app.handle(
+        new Request("http://localhost/docs"),
+      );
+      const specResponse = await app.handle(
+        new Request("http://localhost/docs/openapi.json"),
+      );
+      const document = (await specResponse.json()) as OpenApiDocument;
+
+      expect(scalarResponse.status).toBe(200);
+      expect(scalarResponse.headers.get("content-type")).toContain("text/html");
+      expect(await scalarResponse.text()).toContain("@scalar/api-reference");
+
+      expect(specResponse.status).toBe(200);
+      expect(document.openapi).toBe("3.0.3");
+      expect(document.info).toMatchObject({
+        title: "ACCESS Backend API",
+        version: "docs-test",
+      });
+      expect(document.paths["/api/v1/health"]?.get?.tags).toEqual(["System"]);
+      expect(document.paths["/api/v1/auth/login"]?.post?.tags).toEqual([
+        "Auth",
+      ]);
+      expect(
+        document.paths["/api/v1/auth/login"]?.post?.responses?.["200"]
+          ?.content?.["application/json"]?.schema?.properties?.data?.properties
+          ?.user?.properties?.role?.enum,
+      ).toEqual(["agent", "manager", "admin"]);
+      expect(document.paths["/api/v1/auth/me"]?.get?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
+      expect(document.components?.securitySchemes).toHaveProperty(
+        "bearerAuth",
+      );
+    } finally {
+      await database.close();
+    }
+  });
+
+  test("does not expose documentation by default in production", async () => {
+    const config = loadEnv({
+      NODE_ENV: "production",
+      AUTH_ACCESS_TOKEN_SECRET: "a".repeat(32),
+      AUTH_REFRESH_TOKEN_SECRET: "b".repeat(32),
+    });
+    const database = createDatabase(config.database);
+    const app = createApp({ config, db: database.db });
+
+    try {
+      const response = await app.handle(new Request("http://localhost/docs"));
+
+      expect(config.openApi.enabled).toBe(false);
+      expect(response.status).toBe(404);
+    } finally {
+      await database.close();
+    }
+  });
+});

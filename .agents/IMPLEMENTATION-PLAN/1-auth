@@ -1,0 +1,1069 @@
+# plan.md
+
+# ACCESS Backend Login Implementation Plan
+
+## 1. Goal
+
+Implement the simplest backend login system for ACCESS.
+
+The login system should allow seeded internal users to authenticate using:
+
+```txt
+email + password
+```
+
+After successful login, backend returns:
+
+```txt
+JWT token + user profile
+```
+
+This login system is only for internal ACCESS users:
+
+```txt
+agent
+manager
+admin
+```
+
+No public registration is needed in this phase.
+
+---
+
+## 2. Auth Scope
+
+Build only these endpoints:
+
+```txt
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+```
+
+Do not build yet:
+
+```txt
+register
+refresh token
+forgot password
+email verification
+OAuth
+cookie session
+logout blacklist
+multi-device session tracking
+```
+
+---
+
+## 3. Tech Stack
+
+```txt
+Runtime: Bun
+Framework: Elysia
+Language: TypeScript
+Database: PostgreSQL
+ORM: Drizzle ORM
+Auth: Bearer JWT
+Password Hashing: bcrypt or Bun.password
+```
+
+Recommended for simplicity:
+
+```txt
+JWT: @elysiajs/jwt
+Password Hashing: bcrypt
+```
+
+Install packages:
+
+```bash
+bun add @elysiajs/jwt bcrypt
+bun add -d @types/bcrypt
+```
+
+---
+
+## 4. Expected Login Flow
+
+```txt
+Client sends email + password
+↓
+Backend validates request body
+↓
+Backend finds user by email
+↓
+Backend checks user exists
+↓
+Backend checks user is active
+↓
+Backend compares password with password_hash
+↓
+Backend generates JWT
+↓
+Backend returns token and safe user profile
+```
+
+---
+
+## 5. Expected Auth Header
+
+Protected endpoints should receive token from:
+
+```txt
+Authorization: Bearer <token>
+```
+
+Example:
+
+```txt
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI...
+```
+
+---
+
+## 6. Environment Variables
+
+Update `.env`:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/access_db
+JWT_SECRET=access_dev_secret_change_later
+JWT_EXPIRES_IN=7d
+```
+
+Important:
+
+```txt
+JWT_SECRET must not be hardcoded.
+Use a stronger secret for production.
+```
+
+---
+
+## 7. Folder Structure
+
+Create or update this structure:
+
+```txt
+src/
+  config/
+    env.ts
+
+  db/
+    index.ts
+    schema/
+      users.schema.ts
+      index.ts
+
+  modules/
+    auth/
+      auth.dto.ts
+      auth.routes.ts
+      auth.service.ts
+      auth.types.ts
+
+    users/
+      users.repository.ts
+
+  plugins/
+    auth.plugin.ts
+
+  shared/
+    errors/
+      app-error.ts
+    responses/
+      api-response.ts
+```
+
+If `shared/` feels too much for now, response/error helpers can be created later. But the auth module should still be separated cleanly.
+
+---
+
+# Phase 1 — Environment Config
+
+## 1. Create `src/config/env.ts`
+
+Purpose:
+
+```txt
+Centralize environment variables.
+Validate required env values.
+Prevent undefined env usage across the app.
+```
+
+Required values:
+
+```txt
+DATABASE_URL
+JWT_SECRET
+JWT_EXPIRES_IN
+```
+
+Example behavior:
+
+```txt
+If DATABASE_URL is missing, throw startup error.
+If JWT_SECRET is missing, throw startup error.
+If JWT_EXPIRES_IN is missing, default to 7d.
+```
+
+Example shape:
+
+```ts
+export const env = {
+  databaseUrl: process.env.DATABASE_URL!,
+  jwtSecret: process.env.JWT_SECRET!,
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
+};
+```
+
+Add validation:
+
+```txt
+Throw clear error if DATABASE_URL or JWT_SECRET is missing.
+```
+
+---
+
+# Phase 2 — Users Schema
+
+## 1. Create `src/db/schema/users.schema.ts`
+
+Create the `users` table.
+
+Fields:
+
+```txt
+id
+name
+email
+password_hash
+role
+is_active
+created_at
+updated_at
+```
+
+Enum:
+
+```txt
+user_role:
+- agent
+- manager
+- admin
+```
+
+Important constraints:
+
+```txt
+id primary key
+email unique
+password_hash required
+role required
+is_active default true
+created_at required
+updated_at required
+```
+
+Indexes:
+
+```txt
+email
+role
+is_active
+```
+
+Important note:
+
+```txt
+Never return password_hash to the client.
+```
+
+---
+
+## 2. Export schema
+
+Update:
+
+```txt
+src/db/schema/index.ts
+```
+
+Export:
+
+```ts
+export * from "./users.schema";
+```
+
+---
+
+# Phase 3 — Database Client
+
+## 1. Create `src/db/index.ts`
+
+Purpose:
+
+```txt
+Connect Drizzle ORM to PostgreSQL.
+Export db instance for repositories.
+```
+
+Responsibilities:
+
+```txt
+Read DATABASE_URL from env
+Create postgres client
+Create drizzle db instance
+Export db
+```
+
+---
+
+# Phase 4 — Users Repository
+
+## 1. Create `src/modules/users/users.repository.ts`
+
+Purpose:
+
+```txt
+Encapsulate user database queries.
+```
+
+Functions to implement:
+
+```txt
+findUserByEmail(email)
+findUserById(id)
+```
+
+---
+
+## 2. `findUserByEmail(email)`
+
+Used by:
+
+```txt
+POST /api/v1/auth/login
+```
+
+Should return:
+
+```txt
+id
+name
+email
+password_hash
+role
+is_active
+created_at
+updated_at
+```
+
+Important:
+
+```txt
+This function may include password_hash because login needs it.
+Do not expose this result directly to the client.
+```
+
+---
+
+## 3. `findUserById(id)`
+
+Used by:
+
+```txt
+GET /api/v1/auth/me
+```
+
+Should return safe user fields only:
+
+```txt
+id
+name
+email
+role
+is_active
+created_at
+updated_at
+```
+
+Do not return:
+
+```txt
+password_hash
+```
+
+---
+
+# Phase 5 — Auth DTO
+
+## 1. Create `src/modules/auth/auth.dto.ts`
+
+Purpose:
+
+```txt
+Define request validation for auth endpoints.
+```
+
+Login request body:
+
+```txt
+email: string
+password: string
+```
+
+Validation rules:
+
+```txt
+email must be valid email
+password must not be empty
+```
+
+With Elysia, this can use `t.Object`.
+
+Example shape:
+
+```ts
+export const loginDto = t.Object({
+  email: t.String({
+    format: "email",
+  }),
+  password: t.String({
+    minLength: 1,
+  }),
+});
+```
+
+---
+
+# Phase 6 — Auth Types
+
+## 1. Create `src/modules/auth/auth.types.ts`
+
+Purpose:
+
+```txt
+Define auth-related TypeScript types.
+```
+
+Types to define:
+
+```txt
+AuthUser
+JwtPayload
+LoginResponse
+```
+
+---
+
+## 2. `AuthUser`
+
+Safe user object returned to frontend:
+
+```ts
+type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "agent" | "manager" | "admin";
+};
+```
+
+---
+
+## 3. `JwtPayload`
+
+Data stored inside JWT:
+
+```ts
+type JwtPayload = {
+  sub: string;
+  email: string;
+  role: "agent" | "manager" | "admin";
+};
+```
+
+Use:
+
+```txt
+sub = user.id
+```
+
+---
+
+# Phase 7 — Auth Service
+
+## 1. Create `src/modules/auth/auth.service.ts`
+
+Purpose:
+
+```txt
+Handle login business logic.
+```
+
+Functions to implement:
+
+```txt
+login(input)
+getCurrentUser(userId)
+```
+
+---
+
+## 2. `login(input)`
+
+Input:
+
+```txt
+email
+password
+```
+
+Steps:
+
+```txt
+1. Find user by email.
+2. If user does not exist, throw invalid credentials error.
+3. If user is inactive, throw inactive account error.
+4. Compare password with password_hash.
+5. If password invalid, throw invalid credentials error.
+6. Create safe user object.
+7. Return safe user object.
+```
+
+Important security rule:
+
+```txt
+For wrong email or wrong password, return the same message:
+"Invalid email or password"
+```
+
+Do not reveal:
+
+```txt
+Email does not exist
+Password is wrong
+```
+
+---
+
+## 3. Password compare
+
+Use bcrypt:
+
+```ts
+import bcrypt from "bcrypt";
+
+const isPasswordValid = await bcrypt.compare(
+  input.password,
+  user.passwordHash
+);
+```
+
+---
+
+## 4. Token signing
+
+Token signing can be done in route layer using Elysia JWT plugin, or inside service if the JWT helper is passed in.
+
+Recommended simple approach:
+
+```txt
+Service validates credentials.
+Route signs JWT.
+```
+
+Reason:
+
+```txt
+@elysiajs/jwt is available from Elysia route context.
+Keeping sign inside route avoids coupling service to framework plugin.
+```
+
+---
+
+# Phase 8 — Auth Routes
+
+## 1. Create `src/modules/auth/auth.routes.ts`
+
+Purpose:
+
+```txt
+Define auth endpoints.
+```
+
+Routes:
+
+```txt
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+```
+
+---
+
+## 2. `POST /api/v1/auth/login`
+
+Request body:
+
+```json
+{
+  "email": "agent1@access.test",
+  "password": "password123"
+}
+```
+
+Process:
+
+```txt
+1. Validate request body.
+2. Call authService.login().
+3. Sign JWT with payload:
+   - sub
+   - email
+   - role
+4. Return token and user.
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "jwt-token",
+    "user": {
+      "id": "uuid",
+      "name": "Agent Demo",
+      "email": "agent1@access.test",
+      "role": "agent"
+    }
+  }
+}
+```
+
+Error response for invalid credentials:
+
+```json
+{
+  "success": false,
+  "message": "Invalid email or password"
+}
+```
+
+---
+
+## 3. `GET /api/v1/auth/me`
+
+Headers:
+
+```txt
+Authorization: Bearer <token>
+```
+
+Process:
+
+```txt
+1. Read Bearer token from Authorization header.
+2. Verify JWT.
+3. Extract user id from payload.sub.
+4. Find user by id.
+5. If user does not exist or inactive, return unauthorized.
+6. Return safe user profile.
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "uuid",
+      "name": "Agent Demo",
+      "email": "agent1@access.test",
+      "role": "agent"
+    }
+  }
+}
+```
+
+---
+
+# Phase 9 — Auth Plugin
+
+## 1. Create `src/plugins/auth.plugin.ts`
+
+Purpose:
+
+```txt
+Reusable auth helper for protected routes.
+```
+
+Minimum v1 responsibilities:
+
+```txt
+Read Authorization header
+Extract Bearer token
+Verify JWT
+Find current user
+Attach current user to context
+```
+
+Possible helper names:
+
+```txt
+requireAuth
+getCurrentUser
+```
+
+---
+
+## 2. Bearer token extraction
+
+Expected format:
+
+```txt
+Authorization: Bearer <token>
+```
+
+Invalid formats should return:
+
+```txt
+401 Unauthorized
+```
+
+Cases to reject:
+
+```txt
+missing Authorization header
+Authorization header without Bearer
+empty token
+invalid token
+expired token
+user not found
+inactive user
+```
+
+---
+
+## 3. Role guard can wait
+
+Do not implement complex role guards yet.
+
+But prepare simple helper later:
+
+```txt
+requireRole("admin")
+requireRole("manager")
+requireRole("agent")
+```
+
+For this phase, only implement:
+
+```txt
+requireAuth
+```
+
+---
+
+# Phase 10 — User Seeder
+
+## 1. Create `src/db/seed/users.seed.ts`
+
+Seed internal users:
+
+```txt
+1 admin
+1 manager
+2 agents
+```
+
+Example users:
+
+```txt
+admin@access.test
+manager@access.test
+agent1@access.test
+agent2@access.test
+```
+
+Default password:
+
+```txt
+password123
+```
+
+Important:
+
+```txt
+Hash password before insert.
+Do not store plain password.
+```
+
+Use bcrypt:
+
+```ts
+const passwordHash = await bcrypt.hash("password123", 10);
+```
+
+---
+
+## 2. Create `src/db/seed/index.ts`
+
+Purpose:
+
+```txt
+Run all seeders.
+```
+
+For this phase, only run:
+
+```txt
+users.seed.ts
+```
+
+---
+
+## 3. Seeder behavior
+
+Recommended behavior:
+
+```txt
+Upsert users by email.
+If email already exists, do not duplicate.
+```
+
+This makes seeding safe to rerun.
+
+---
+
+# Phase 11 — App Registration
+
+## 1. Register JWT plugin
+
+In main app file:
+
+```txt
+src/app.ts
+```
+
+Register JWT plugin with:
+
+```txt
+name: "jwt"
+secret: env.jwtSecret
+```
+
+---
+
+## 2. Register auth routes
+
+In main app file:
+
+```txt
+src/app.ts
+```
+
+Mount:
+
+```txt
+authRoutes
+```
+
+Expected final route paths:
+
+```txt
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+```
+
+---
+
+# Phase 12 — Package Scripts
+
+Add or confirm these scripts in `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "bun run --watch src/server.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "bun run src/db/seed/index.ts"
+  }
+}
+```
+
+---
+
+# Phase 13 — Manual Testing
+
+## 1. Run migration
+
+```bash
+bun run db:generate
+bun run db:migrate
+```
+
+Or during early development:
+
+```bash
+bun run db:push
+```
+
+---
+
+## 2. Run seeder
+
+```bash
+bun run db:seed
+```
+
+---
+
+## 3. Start server
+
+```bash
+bun run dev
+```
+
+---
+
+## 4. Test login success
+
+Request:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "agent1@access.test",
+    "password": "password123"
+  }'
+```
+
+Expected:
+
+```txt
+200 OK
+Returns token and user profile.
+```
+
+---
+
+## 5. Test login wrong password
+
+Request:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "agent1@access.test",
+    "password": "wrongpassword"
+  }'
+```
+
+Expected:
+
+```txt
+401 Unauthorized
+Invalid email or password
+```
+
+---
+
+## 6. Test `/me`
+
+Request:
+
+```bash
+curl http://localhost:3000/api/v1/auth/me \
+  -H "Authorization: Bearer <token>"
+```
+
+Expected:
+
+```txt
+200 OK
+Returns current user profile.
+```
+
+---
+
+## 7. Test `/me` without token
+
+Request:
+
+```bash
+curl http://localhost:3000/api/v1/auth/me
+```
+
+Expected:
+
+```txt
+401 Unauthorized
+```
+
+---
+
+# Phase 14 — Acceptance Criteria
+
+Login implementation is considered done when:
+
+```txt
+users table exists
+seeded users can login
+passwords are hashed
+wrong credentials are rejected
+inactive users cannot login
+JWT token is returned on successful login
+GET /api/v1/auth/me returns current user from token
+GET /api/v1/auth/me rejects missing/invalid token
+password_hash is never returned to frontend
+```
+
+---
+
+# Phase 15 — Future Improvements
+
+Do not build now, but keep in mind:
+
+```txt
+refresh token
+httpOnly cookie auth
+logout token blacklist
+role-based route guard
+admin user management
+password reset
+rate limiting login endpoint
+login attempt logging
+audit log for auth events
+```
+
+---
+
+# Final Notes
+
+For this phase, keep auth simple.
+
+The login system should only prove that:
+
+```txt
+Seeded internal users can authenticate
+Backend can identify current user
+Future modules can depend on authenticated user
+```
+
+After this is stable, continue with:
+
+```txt
+complaints
+quick_response_sessions
+tickets
+action_requests
+references
+```

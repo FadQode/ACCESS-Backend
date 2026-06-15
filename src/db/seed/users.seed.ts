@@ -7,47 +7,55 @@ export const developmentUserPassword = "password123";
 
 export const developmentUsers = [
   {
+    id: "00000000-0000-4000-8000-000000000001",
     name: "ACCESS Administrator",
     email: "admin@access.test",
     role: "admin",
   },
   {
+    id: "00000000-0000-4000-8000-000000000002",
     name: "Manager One",
     email: "manager1@access.test",
     role: "manager",
   },
   {
+    id: "00000000-0000-4000-8000-000000000003",
     name: "Manager Two",
     email: "manager2@access.test",
     role: "manager",
   },
   {
+    id: "00000000-0000-4000-8000-000000000004",
     name: "Agent One",
     email: "agent1@access.test",
     role: "agent",
   },
   {
+    id: "00000000-0000-4000-8000-000000000005",
     name: "Agent Two",
     email: "agent2@access.test",
     role: "agent",
   },
   {
+    id: "00000000-0000-4000-8000-000000000006",
     name: "Agent Three",
     email: "agent3@access.test",
     role: "agent",
   },
   {
+    id: "00000000-0000-4000-8000-000000000007",
     name: "Agent Four",
     email: "agent4@access.test",
     role: "agent",
   },
   {
+    id: "00000000-0000-4000-8000-000000000008",
     name: "Agent Five",
     email: "agent5@access.test",
     role: "agent",
   },
 ] as const satisfies ReadonlyArray<
-  Pick<NewUser, "email" | "name" | "role">
+  Pick<NewUser, "email" | "id" | "name" | "role">
 >;
 
 export const seedUsers = async (db: Database): Promise<number> => {

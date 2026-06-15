@@ -7,13 +7,14 @@ import {
 import { agentPerformance } from "./agent-performance.schema";
 import { auditLogs } from "./audit-logs.schema";
 import { complaints } from "./complaints.schema";
-import {
-  contextDocuments,
-  contextDocumentTags,
-  documentReferences,
-  documentTags,
-} from "./documents.schema";
 import { quickResponseSessions } from "./quick-response.schema";
+import {
+  actionRequestReferences,
+  quickResponseReferences,
+  referenceSources,
+  referenceSourceTags,
+  referenceTags,
+} from "./references.schema";
 import { ticketEvents } from "./ticket-events.schema";
 import { tickets } from "./tickets.schema";
 import { users } from "./users.schema";
@@ -29,11 +30,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   linkedActionRequestComplaints: many(actionRequestComplaints, {
     relationName: "action_request_complaint_agent",
   }),
-  uploadedDocuments: many(contextDocuments, {
-    relationName: "document_uploader",
+  referenceSources: many(referenceSources, {
+    relationName: "reference_source_creator",
   }),
-  documentReferences: many(documentReferences, {
-    relationName: "document_referrer",
+  quickResponseReferences: many(quickResponseReferences, {
+    relationName: "quick_response_reference_referrer",
+  }),
+  actionRequestReferences: many(actionRequestReferences, {
+    relationName: "action_request_reference_attacher",
   }),
   ticketEvents: many(ticketEvents, { relationName: "ticket_event_actor" }),
   auditLogs: many(auditLogs, { relationName: "audit_log_actor" }),
@@ -60,7 +64,6 @@ export const ticketsRelations = relations(tickets, ({ many, one }) => ({
   }),
   quickResponseSessions: many(quickResponseSessions),
   actionRequestLinks: many(actionRequestComplaints),
-  documentReferences: many(documentReferences),
   events: many(ticketEvents),
 }));
 
@@ -80,7 +83,7 @@ export const quickResponseSessionsRelations = relations(
       fields: [quickResponseSessions.ticketId],
       references: [tickets.id],
     }),
-    documentReferences: many(documentReferences),
+    references: many(quickResponseReferences),
   }),
 );
 
@@ -93,6 +96,7 @@ export const actionRequestsRelations = relations(
       relationName: "action_request_manager",
     }),
     complaintLinks: many(actionRequestComplaints),
+    references: many(actionRequestReferences),
   }),
 );
 
@@ -119,56 +123,72 @@ export const actionRequestComplaintsRelations = relations(
   }),
 );
 
-export const contextDocumentsRelations = relations(
-  contextDocuments,
+export const referenceSourcesRelations = relations(
+  referenceSources,
   ({ many, one }) => ({
-    uploader: one(users, {
-      fields: [contextDocuments.uploadedBy],
+    creator: one(users, {
+      fields: [referenceSources.createdBy],
       references: [users.id],
-      relationName: "document_uploader",
+      relationName: "reference_source_creator",
     }),
-    tagLinks: many(contextDocumentTags),
-    references: many(documentReferences),
+    tagLinks: many(referenceSourceTags),
+    quickResponseReferences: many(quickResponseReferences),
+    actionRequestReferences: many(actionRequestReferences),
   }),
 );
 
-export const documentTagsRelations = relations(documentTags, ({ many }) => ({
-  documentLinks: many(contextDocumentTags),
+export const referenceTagsRelations = relations(referenceTags, ({ many }) => ({
+  sourceLinks: many(referenceSourceTags),
 }));
 
-export const contextDocumentTagsRelations = relations(
-  contextDocumentTags,
+export const referenceSourceTagsRelations = relations(
+  referenceSourceTags,
   ({ one }) => ({
-    document: one(contextDocuments, {
-      fields: [contextDocumentTags.contextDocumentId],
-      references: [contextDocuments.id],
+    source: one(referenceSources, {
+      fields: [referenceSourceTags.referenceSourceId],
+      references: [referenceSources.id],
     }),
-    tag: one(documentTags, {
-      fields: [contextDocumentTags.tagId],
-      references: [documentTags.id],
+    tag: one(referenceTags, {
+      fields: [referenceSourceTags.tagId],
+      references: [referenceTags.id],
     }),
   }),
 );
 
-export const documentReferencesRelations = relations(
-  documentReferences,
+export const quickResponseReferencesRelations = relations(
+  quickResponseReferences,
   ({ one }) => ({
-    document: one(contextDocuments, {
-      fields: [documentReferences.contextDocumentId],
-      references: [contextDocuments.id],
-    }),
-    ticket: one(tickets, {
-      fields: [documentReferences.ticketId],
-      references: [tickets.id],
-    }),
     quickResponseSession: one(quickResponseSessions, {
-      fields: [documentReferences.quickResponseSessionId],
+      fields: [quickResponseReferences.quickResponseSessionId],
       references: [quickResponseSessions.id],
     }),
+    source: one(referenceSources, {
+      fields: [quickResponseReferences.referenceSourceId],
+      references: [referenceSources.id],
+    }),
     referrer: one(users, {
-      fields: [documentReferences.referencedBy],
+      fields: [quickResponseReferences.referencedBy],
       references: [users.id],
-      relationName: "document_referrer",
+      relationName: "quick_response_reference_referrer",
+    }),
+  }),
+);
+
+export const actionRequestReferencesRelations = relations(
+  actionRequestReferences,
+  ({ one }) => ({
+    actionRequest: one(actionRequests, {
+      fields: [actionRequestReferences.actionRequestId],
+      references: [actionRequests.id],
+    }),
+    source: one(referenceSources, {
+      fields: [actionRequestReferences.referenceSourceId],
+      references: [referenceSources.id],
+    }),
+    attacher: one(users, {
+      fields: [actionRequestReferences.attachedBy],
+      references: [users.id],
+      relationName: "action_request_reference_attacher",
     }),
   }),
 );

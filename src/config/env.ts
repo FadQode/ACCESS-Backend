@@ -25,6 +25,12 @@ export interface RedisConfig {
   url: string;
 }
 
+export interface OpenApiConfig {
+  enabled: boolean;
+  path: string;
+  specPath: string;
+}
+
 export interface AiConfig {
   apiKey?: string;
   baseUrl: string;
@@ -44,6 +50,7 @@ export interface AppConfig {
   host: string;
   logLevel: LogLevel;
   nodeEnv: NodeEnvironment;
+  openApi: OpenApiConfig;
   port: number;
   redis: RedisConfig;
 }
@@ -148,6 +155,22 @@ const readCorsOrigins = (value: string | undefined): string[] => {
   return origins;
 };
 
+const readHttpPath = (
+  value: string | undefined,
+  fallback: string,
+  name: string,
+): string => {
+  const path = readString(value, fallback);
+
+  if (!path.startsWith("/") || path.length === 1 || path.endsWith("/")) {
+    throw new Error(
+      `${name} must start with /, contain a path segment, and not end with /`,
+    );
+  }
+
+  return path;
+};
+
 const validateSecret = (
   secret: string,
   name: string,
@@ -177,6 +200,11 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
   const aiBaseUrl = readString(
     source.AI_BASE_URL,
     "http://localhost:8000",
+  );
+  const openApiPath = readHttpPath(
+    source.OPENAPI_PATH,
+    "/docs",
+    "OPENAPI_PATH",
   );
 
   if (redisEnabled && !redisUrl) {
@@ -221,10 +249,10 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
       ),
       accessTokenTtlSeconds: readInteger(
         source.AUTH_ACCESS_TOKEN_TTL_SECONDS,
-        900,
+        604_800,
         "AUTH_ACCESS_TOKEN_TTL_SECONDS",
         60,
-        86_400,
+        31_536_000,
       ),
       cookieSameSite: readEnum(
         source.AUTH_COOKIE_SAME_SITE,
@@ -301,6 +329,15 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
       "LOG_LEVEL",
     ),
     nodeEnv,
+    openApi: {
+      enabled: readBoolean(
+        source.OPENAPI_ENABLED,
+        nodeEnv !== "production",
+        "OPENAPI_ENABLED",
+      ),
+      path: openApiPath,
+      specPath: `${openApiPath}/openapi.json`,
+    },
     port: readInteger(source.PORT, 3000, "PORT", 1, 65_535),
     redis: {
       enabled: redisEnabled,

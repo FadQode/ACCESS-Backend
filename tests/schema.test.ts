@@ -7,11 +7,12 @@ import {
   agentPerformance,
   auditLogs,
   complaints,
-  contextDocuments,
-  contextDocumentTags,
-  documentReferences,
-  documentTags,
+  actionRequestReferences,
+  quickResponseReferences,
   quickResponseSessions,
+  referenceSources,
+  referenceSourceTags,
+  referenceTags,
   ticketEvents,
   tickets,
   users,
@@ -24,13 +25,24 @@ const plannedTables = [
   quickResponseSessions,
   actionRequests,
   actionRequestComplaints,
-  contextDocuments,
-  documentTags,
-  contextDocumentTags,
-  documentReferences,
+  referenceSources,
+  referenceTags,
+  referenceSourceTags,
+  quickResponseReferences,
+  actionRequestReferences,
   ticketEvents,
   auditLogs,
   agentPerformance,
+] as const;
+
+const postponedTables = [
+  "context_documents",
+  "document_tags",
+  "context_document_tags",
+  "document_references",
+  "rag_sources",
+  "rag_chunks",
+  "rag_retrievals",
 ] as const;
 
 const configFor = (table: PgTable) => getTableConfig(table);
@@ -56,14 +68,23 @@ describe("database schema", () => {
       "quick_response_sessions",
       "action_requests",
       "action_request_complaints",
-      "context_documents",
-      "document_tags",
-      "context_document_tags",
-      "document_references",
+      "reference_sources",
+      "reference_tags",
+      "reference_source_tags",
+      "quick_response_references",
+      "action_request_references",
       "ticket_events",
       "audit_logs",
       "agent_performance",
     ]);
+  });
+
+  test("does not include postponed document or RAG tables", () => {
+    const tableNames = plannedTables.map((table) => configFor(table).name);
+
+    for (const tableName of postponedTables) {
+      expect(tableNames).not.toContain(tableName);
+    }
   });
 
   test("preserves the plan's critical uniqueness rules", () => {
@@ -81,25 +102,23 @@ describe("database schema", () => {
     expect(uniqueNamesFor(actionRequestComplaints)).toContain(
       "action_request_complaints_request_complaint_unique",
     );
-    expect(uniqueNamesFor(documentTags)).toContain(
-      "document_tags_name_unique",
+    expect(uniqueNamesFor(referenceTags)).toContain(
+      "reference_tags_name_unique",
     );
-    expect(uniqueNamesFor(contextDocumentTags)).toContain(
-      "context_document_tags_pk",
+    expect(uniqueNamesFor(referenceSourceTags)).toContain(
+      "reference_source_tags_pk",
     );
     expect(uniqueNamesFor(agentPerformance)).toContain(
       "agent_performance_agent_period_unique",
     );
   });
 
-  test("enforces document targets and expected foreign-key counts", () => {
-    expect(
-      configFor(documentReferences).checks.map((check) => check.name),
-    ).toContain("document_references_has_target");
-
+  test("enforces expected foreign-key counts", () => {
     expect(configFor(tickets).foreignKeys).toHaveLength(2);
     expect(configFor(quickResponseSessions).foreignKeys).toHaveLength(3);
     expect(configFor(actionRequestComplaints).foreignKeys).toHaveLength(4);
-    expect(configFor(documentReferences).foreignKeys).toHaveLength(4);
+    expect(configFor(referenceSources).foreignKeys).toHaveLength(1);
+    expect(configFor(quickResponseReferences).foreignKeys).toHaveLength(3);
+    expect(configFor(actionRequestReferences).foreignKeys).toHaveLength(3);
   });
 });

@@ -1,12 +1,14 @@
 CREATE TYPE "public"."action_request_status" AS ENUM('open', 'reviewing', 'action_planned', 'action_taken', 'closed');--> statement-breakpoint
 CREATE TYPE "public"."complaint_category" AS ENUM('delay', 'refund', 'cancellation', 'lost_item', 'facility', 'payment', 'account', 'app_error', 'other');--> statement-breakpoint
 CREATE TYPE "public"."complaint_source" AS ENUM('web_form', 'twitter', 'instagram', 'facebook', 'google_play', 'app_store', 'other');--> statement-breakpoint
-CREATE TYPE "public"."complaint_status" AS ENUM('submitted', 'triaged', 'linked_to_ticket', 'resolved', 'closed');--> statement-breakpoint
-CREATE TYPE "public"."document_status" AS ENUM('active', 'draft', 'archived');--> statement-breakpoint
-CREATE TYPE "public"."document_type" AS ENUM('sop', 'faq', 'policy', 'guide', 'template', 'known_issue');--> statement-breakpoint
+CREATE TYPE "public"."complaint_status" AS ENUM('submitted', 'waiting_action', 'resolved', 'closed');--> statement-breakpoint
 CREATE TYPE "public"."quick_response_outcome" AS ENUM('sent_resolved', 'sent_hea_action', 'saved_ticket', 'escalated', 'copy_only');--> statement-breakpoint
 CREATE TYPE "public"."response_target" AS ENUM('public_reply', 'dm', 'app_review', 'internal_note');--> statement-breakpoint
-CREATE TYPE "public"."ticket_event_type" AS ENUM('created', 'assigned', 'hea_sent', 'escalated', 'manager_action_linked', 'resolved', 'closed', 'reopened');--> statement-breakpoint
+CREATE TYPE "public"."action_request_reference_usage" AS ENUM('evidence', 'action_basis', 'policy_support', 'closure_support', 'related_link', 'internal_note');--> statement-breakpoint
+CREATE TYPE "public"."quick_response_reference_usage" AS ENUM('response_basis', 'template_used', 'policy_support', 'known_issue', 'previous_resolution', 'action_closure');--> statement-breakpoint
+CREATE TYPE "public"."reference_source_type" AS ENUM('sop', 'faq', 'policy', 'guide', 'template', 'known_issue', 'external_link', 'uploaded_file', 'previous_action', 'internal_note');--> statement-breakpoint
+CREATE TYPE "public"."reference_status" AS ENUM('active', 'draft', 'archived');--> statement-breakpoint
+CREATE TYPE "public"."ticket_event_type" AS ENUM('created', 'assigned', 'hea_sent', 'escalated', 'manager_action_linked', 'manager_action_done', 'resolved', 'closed', 'reopened');--> statement-breakpoint
 CREATE TYPE "public"."ticket_priority" AS ENUM('low', 'medium', 'high', 'urgent');--> statement-breakpoint
 CREATE TYPE "public"."ticket_status" AS ENUM('open', 'hea_sent', 'waiting_manager_action', 'manager_action_done', 'ready_to_close', 'closed');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('agent', 'manager', 'admin');--> statement-breakpoint
@@ -96,44 +98,6 @@ CREATE TABLE "complaints" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "context_document_tags" (
-	"context_document_id" uuid NOT NULL,
-	"tag_id" uuid NOT NULL,
-	CONSTRAINT "context_document_tags_pk" PRIMARY KEY("context_document_id","tag_id")
-);
---> statement-breakpoint
-CREATE TABLE "context_documents" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"uploaded_by" uuid NOT NULL,
-	"title" varchar(255) NOT NULL,
-	"doc_type" "document_type" NOT NULL,
-	"category" "complaint_category" NOT NULL,
-	"status" "document_status" DEFAULT 'draft' NOT NULL,
-	"version" varchar(32) DEFAULT '1.0' NOT NULL,
-	"content" text NOT NULL,
-	"search_text" text,
-	"file_url" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "document_references" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"context_document_id" uuid NOT NULL,
-	"ticket_id" uuid,
-	"quick_response_session_id" uuid,
-	"referenced_by" uuid NOT NULL,
-	"reference_reason" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "document_references_has_target" CHECK ("document_references"."ticket_id" is not null or "document_references"."quick_response_session_id" is not null)
-);
---> statement-breakpoint
-CREATE TABLE "document_tags" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"name" varchar(100) NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "quick_response_sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"agent_id" uuid NOT NULL,
@@ -148,9 +112,61 @@ CREATE TABLE "quick_response_sessions" (
 	"selected_apologize" text,
 	"selected_take_action" text,
 	"final_response" text,
-	"outcome" "quick_response_outcome",
+	"outcome" "quick_response_outcome" NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "action_request_references" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"action_request_id" uuid NOT NULL,
+	"reference_source_id" uuid NOT NULL,
+	"attached_by" uuid NOT NULL,
+	"usage_type" "action_request_reference_usage" NOT NULL,
+	"snapshot_text" text,
+	"note" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "quick_response_references" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"quick_response_session_id" uuid NOT NULL,
+	"reference_source_id" uuid NOT NULL,
+	"referenced_by" uuid NOT NULL,
+	"usage_type" "quick_response_reference_usage" NOT NULL,
+	"relevance_score" numeric(6, 4),
+	"snapshot_text" text,
+	"note" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "reference_source_tags" (
+	"reference_source_id" uuid NOT NULL,
+	"tag_id" uuid NOT NULL,
+	CONSTRAINT "reference_source_tags_pk" PRIMARY KEY("reference_source_id","tag_id")
+);
+--> statement-breakpoint
+CREATE TABLE "reference_sources" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"created_by" uuid NOT NULL,
+	"source_type" "reference_source_type" NOT NULL,
+	"title" varchar(255) NOT NULL,
+	"category" "complaint_category",
+	"content" text,
+	"url" text,
+	"file_url" text,
+	"status" "reference_status" DEFAULT 'active' NOT NULL,
+	"version" varchar(32) DEFAULT '1.0' NOT NULL,
+	"search_text" text,
+	"metadata" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "reference_tags" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "ticket_events" (
@@ -195,16 +211,18 @@ ALTER TABLE "action_request_complaints" ADD CONSTRAINT "action_request_complaint
 ALTER TABLE "action_requests" ADD CONSTRAINT "action_requests_manager_id_users_id_fk" FOREIGN KEY ("manager_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_performance" ADD CONSTRAINT "agent_performance_agent_id_users_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_actor_id_users_id_fk" FOREIGN KEY ("actor_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "context_document_tags" ADD CONSTRAINT "context_document_tags_context_document_id_context_documents_id_fk" FOREIGN KEY ("context_document_id") REFERENCES "public"."context_documents"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "context_document_tags" ADD CONSTRAINT "context_document_tags_tag_id_document_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."document_tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "context_documents" ADD CONSTRAINT "context_documents_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "document_references" ADD CONSTRAINT "document_references_context_document_id_context_documents_id_fk" FOREIGN KEY ("context_document_id") REFERENCES "public"."context_documents"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "document_references" ADD CONSTRAINT "document_references_ticket_id_tickets_id_fk" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "document_references" ADD CONSTRAINT "document_references_quick_response_session_id_quick_response_sessions_id_fk" FOREIGN KEY ("quick_response_session_id") REFERENCES "public"."quick_response_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "document_references" ADD CONSTRAINT "document_references_referenced_by_users_id_fk" FOREIGN KEY ("referenced_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quick_response_sessions" ADD CONSTRAINT "quick_response_sessions_agent_id_users_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quick_response_sessions" ADD CONSTRAINT "quick_response_sessions_complaint_id_complaints_id_fk" FOREIGN KEY ("complaint_id") REFERENCES "public"."complaints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quick_response_sessions" ADD CONSTRAINT "quick_response_sessions_ticket_id_tickets_id_fk" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "action_request_references" ADD CONSTRAINT "action_request_references_action_request_id_action_requests_id_fk" FOREIGN KEY ("action_request_id") REFERENCES "public"."action_requests"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "action_request_references" ADD CONSTRAINT "action_request_references_reference_source_id_reference_sources_id_fk" FOREIGN KEY ("reference_source_id") REFERENCES "public"."reference_sources"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "action_request_references" ADD CONSTRAINT "action_request_references_attached_by_users_id_fk" FOREIGN KEY ("attached_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "quick_response_references" ADD CONSTRAINT "quick_response_references_quick_response_session_id_quick_response_sessions_id_fk" FOREIGN KEY ("quick_response_session_id") REFERENCES "public"."quick_response_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "quick_response_references" ADD CONSTRAINT "quick_response_references_reference_source_id_reference_sources_id_fk" FOREIGN KEY ("reference_source_id") REFERENCES "public"."reference_sources"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "quick_response_references" ADD CONSTRAINT "quick_response_references_referenced_by_users_id_fk" FOREIGN KEY ("referenced_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "reference_source_tags" ADD CONSTRAINT "reference_source_tags_reference_source_id_reference_sources_id_fk" FOREIGN KEY ("reference_source_id") REFERENCES "public"."reference_sources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "reference_source_tags" ADD CONSTRAINT "reference_source_tags_tag_id_reference_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."reference_tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "reference_sources" ADD CONSTRAINT "reference_sources_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ticket_events" ADD CONSTRAINT "ticket_events_ticket_id_tickets_id_fk" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ticket_events" ADD CONSTRAINT "ticket_events_actor_id_users_id_fk" FOREIGN KEY ("actor_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tickets" ADD CONSTRAINT "tickets_complaint_id_complaints_id_fk" FOREIGN KEY ("complaint_id") REFERENCES "public"."complaints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -230,22 +248,26 @@ CREATE INDEX "complaints_source_idx" ON "complaints" USING btree ("source");--> 
 CREATE INDEX "complaints_category_idx" ON "complaints" USING btree ("category");--> statement-breakpoint
 CREATE INDEX "complaints_status_idx" ON "complaints" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "complaints_submitted_at_idx" ON "complaints" USING btree ("submitted_at");--> statement-breakpoint
-CREATE INDEX "context_document_tags_tag_id_idx" ON "context_document_tags" USING btree ("tag_id");--> statement-breakpoint
-CREATE INDEX "context_documents_uploaded_by_idx" ON "context_documents" USING btree ("uploaded_by");--> statement-breakpoint
-CREATE INDEX "context_documents_title_idx" ON "context_documents" USING btree ("title");--> statement-breakpoint
-CREATE INDEX "context_documents_doc_type_idx" ON "context_documents" USING btree ("doc_type");--> statement-breakpoint
-CREATE INDEX "context_documents_category_idx" ON "context_documents" USING btree ("category");--> statement-breakpoint
-CREATE INDEX "context_documents_status_idx" ON "context_documents" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "document_references_context_document_id_idx" ON "document_references" USING btree ("context_document_id");--> statement-breakpoint
-CREATE INDEX "document_references_ticket_id_idx" ON "document_references" USING btree ("ticket_id");--> statement-breakpoint
-CREATE INDEX "document_references_quick_response_session_id_idx" ON "document_references" USING btree ("quick_response_session_id");--> statement-breakpoint
-CREATE INDEX "document_references_referenced_by_idx" ON "document_references" USING btree ("referenced_by");--> statement-breakpoint
-CREATE UNIQUE INDEX "document_tags_name_unique" ON "document_tags" USING btree ("name");--> statement-breakpoint
 CREATE INDEX "quick_response_sessions_agent_id_idx" ON "quick_response_sessions" USING btree ("agent_id");--> statement-breakpoint
 CREATE INDEX "quick_response_sessions_complaint_id_idx" ON "quick_response_sessions" USING btree ("complaint_id");--> statement-breakpoint
 CREATE INDEX "quick_response_sessions_ticket_id_idx" ON "quick_response_sessions" USING btree ("ticket_id");--> statement-breakpoint
 CREATE INDEX "quick_response_sessions_outcome_idx" ON "quick_response_sessions" USING btree ("outcome");--> statement-breakpoint
 CREATE INDEX "quick_response_sessions_created_at_idx" ON "quick_response_sessions" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "action_request_references_action_request_id_idx" ON "action_request_references" USING btree ("action_request_id");--> statement-breakpoint
+CREATE INDEX "action_request_references_source_id_idx" ON "action_request_references" USING btree ("reference_source_id");--> statement-breakpoint
+CREATE INDEX "action_request_references_attached_by_idx" ON "action_request_references" USING btree ("attached_by");--> statement-breakpoint
+CREATE INDEX "action_request_references_usage_type_idx" ON "action_request_references" USING btree ("usage_type");--> statement-breakpoint
+CREATE INDEX "quick_response_references_session_id_idx" ON "quick_response_references" USING btree ("quick_response_session_id");--> statement-breakpoint
+CREATE INDEX "quick_response_references_source_id_idx" ON "quick_response_references" USING btree ("reference_source_id");--> statement-breakpoint
+CREATE INDEX "quick_response_references_referenced_by_idx" ON "quick_response_references" USING btree ("referenced_by");--> statement-breakpoint
+CREATE INDEX "quick_response_references_usage_type_idx" ON "quick_response_references" USING btree ("usage_type");--> statement-breakpoint
+CREATE INDEX "reference_source_tags_tag_id_idx" ON "reference_source_tags" USING btree ("tag_id");--> statement-breakpoint
+CREATE INDEX "reference_sources_created_by_idx" ON "reference_sources" USING btree ("created_by");--> statement-breakpoint
+CREATE INDEX "reference_sources_source_type_idx" ON "reference_sources" USING btree ("source_type");--> statement-breakpoint
+CREATE INDEX "reference_sources_category_idx" ON "reference_sources" USING btree ("category");--> statement-breakpoint
+CREATE INDEX "reference_sources_status_idx" ON "reference_sources" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "reference_sources_title_idx" ON "reference_sources" USING btree ("title");--> statement-breakpoint
+CREATE UNIQUE INDEX "reference_tags_name_unique" ON "reference_tags" USING btree ("name");--> statement-breakpoint
 CREATE INDEX "ticket_events_ticket_id_idx" ON "ticket_events" USING btree ("ticket_id");--> statement-breakpoint
 CREATE INDEX "ticket_events_actor_id_idx" ON "ticket_events" USING btree ("actor_id");--> statement-breakpoint
 CREATE INDEX "ticket_events_event_type_idx" ON "ticket_events" USING btree ("event_type");--> statement-breakpoint
@@ -255,4 +277,6 @@ CREATE INDEX "tickets_agent_id_idx" ON "tickets" USING btree ("agent_id");--> st
 CREATE INDEX "tickets_status_idx" ON "tickets" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "tickets_priority_idx" ON "tickets" USING btree ("priority");--> statement-breakpoint
 CREATE INDEX "tickets_created_at_idx" ON "tickets" USING btree ("created_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "users_email_unique" ON "users" USING btree ("email");
+CREATE UNIQUE INDEX "users_email_unique" ON "users" USING btree ("email");--> statement-breakpoint
+CREATE INDEX "users_role_idx" ON "users" USING btree ("role");--> statement-breakpoint
+CREATE INDEX "users_is_active_idx" ON "users" USING btree ("is_active");

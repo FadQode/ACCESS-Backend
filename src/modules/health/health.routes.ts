@@ -14,14 +14,19 @@ export const createHealthRoutes = (config: AppConfig) =>
         "Service is healthy",
       ),
     {
-      response: t.Object({
-        success: t.Literal(true),
-        message: t.String(),
-        data: healthDataSchema,
-      }),
+      response: t.Object(
+        {
+          success: t.Literal(true),
+          message: t.String(),
+          data: healthDataSchema,
+        },
+        { description: "Healthy service response." },
+      ),
       detail: {
         tags: ["System"],
         summary: "Check API health",
+        description:
+          "Returns service identity, version, status, and the current server timestamp.",
       },
     },
   );

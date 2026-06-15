@@ -28,6 +28,34 @@ The API starts at `http://localhost:3000`. Its versioned health endpoint is:
 GET /api/v1/health
 ```
 
+Internal seeded users authenticate with bearer JWTs through:
+
+```txt
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+```
+
+Development users use the password `password123`. Run `bun run db:seed`
+after applying migrations to load them.
+
+## API Documentation
+
+Interactive Scalar documentation is available during development at:
+
+```txt
+http://localhost:3000/docs
+```
+
+The generated OpenAPI JSON document is available at:
+
+```txt
+http://localhost:3000/docs/openapi.json
+```
+
+Set `OPENAPI_ENABLED=false` to disable both endpoints. Documentation defaults
+to disabled in production unless `OPENAPI_ENABLED=true` is explicitly set.
+The base documentation path can be changed with `OPENAPI_PATH`.
+
 ## Commands
 
 ```bash

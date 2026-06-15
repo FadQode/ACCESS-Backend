@@ -33,8 +33,7 @@ export const complaintCategoryEnum = pgEnum("complaint_category", [
 
 export const complaintStatusEnum = pgEnum("complaint_status", [
   "submitted",
-  "triaged",
-  "linked_to_ticket",
+  "waiting_action",
   "resolved",
   "closed",
 ]);

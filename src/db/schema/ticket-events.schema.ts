@@ -17,6 +17,7 @@ export const ticketEventTypeEnum = pgEnum("ticket_event_type", [
   "hea_sent",
   "escalated",
   "manager_action_linked",
+  "manager_action_done",
   "resolved",
   "closed",
   "reopened",

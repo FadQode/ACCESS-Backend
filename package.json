@@ -12,12 +12,17 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
+    "db:reset": "bun run src/db/reset.ts",
+    "db:reset:migrate": "bun run db:reset && bun run db:migrate",
+    "db:reset:seed": "bun run db:reset:migrate && bun run db:seed",
     "db:seed": "bun run src/db/seed/index.ts",
     "db:seed:users": "bun run src/db/seed/index.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@elysia/openapi": "^1.4.15",
     "@elysiajs/cors": "^1.4.2",
+    "@elysiajs/jwt": "^1.4.2",
     "drizzle-orm": "^0.45.2",
     "elysia": "latest",
     "postgres": "^3.4.9"

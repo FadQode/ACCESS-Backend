@@ -10,6 +10,12 @@ describe("loadEnv", () => {
     expect(config.port).toBe(3000);
     expect(config.corsOrigins).toEqual(["http://localhost:3000"]);
     expect(config.database.maxConnections).toBe(10);
+    expect(config.auth.accessTokenTtlSeconds).toBe(604_800);
+    expect(config.openApi).toEqual({
+      enabled: true,
+      path: "/docs",
+      specPath: "/docs/openapi.json",
+    });
     expect(config.redis.enabled).toBe(false);
     expect(config.ai.enabled).toBe(false);
   });
@@ -45,6 +51,19 @@ describe("loadEnv", () => {
       }),
     ).toThrow(
       "AUTH_ACCESS_TOKEN_SECRET must contain at least 32 characters in production",
+    );
+  });
+
+  test("supports a custom OpenAPI path", () => {
+    const config = loadEnv({ OPENAPI_PATH: "/reference" });
+
+    expect(config.openApi.path).toBe("/reference");
+    expect(config.openApi.specPath).toBe("/reference/openapi.json");
+  });
+
+  test("rejects an invalid OpenAPI path", () => {
+    expect(() => loadEnv({ OPENAPI_PATH: "docs/" })).toThrow(
+      "OPENAPI_PATH must start with /, contain a path segment, and not end with /",
     );
   });
 });

@@ -1,2 +1,3 @@
-// Auth module boundary: authentication, sessions, and role-based access support.
-export {};
+export * from "./auth.routes";
+export * from "./auth.service";
+export * from "./auth.types";

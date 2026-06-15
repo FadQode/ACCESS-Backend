@@ -1,3 +1,5 @@
+import { Elysia } from "elysia";
+
 import { AppError } from "../shared/errors/app.error";
 import { errorResponse } from "../shared/http/response";
 
@@ -35,3 +37,11 @@ export const mapError = (code: string, error: unknown) => {
     body: errorResponse("Internal server error", "INTERNAL_SERVER_ERROR"),
   };
 };
+
+export const errorPlugin = new Elysia({ name: "error-handler" })
+  .onError(({ code, error, set }) => {
+    const mappedError = mapError(String(code), error);
+    set.status = mappedError.status;
+    return mappedError.body;
+  })
+  .as("global");

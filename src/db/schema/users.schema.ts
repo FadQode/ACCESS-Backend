@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   pgEnum,
   pgTable,
   timestamp,
@@ -32,6 +33,8 @@ export const users = pgTable(
   },
   (table) => [
     uniqueIndex("users_email_unique").on(table.email),
+    index("users_role_idx").on(table.role),
+    index("users_is_active_idx").on(table.isActive),
   ],
 );
 

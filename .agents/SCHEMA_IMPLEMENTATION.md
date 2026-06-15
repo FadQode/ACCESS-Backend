@@ -1,4 +1,4 @@
-# plan.md
+# SCHEMA_IMPLEMENTATION.md
 
 # ACCESS Backend Database Schema Plan
 
@@ -10,16 +10,49 @@ This schema should support the core business workflow:
 
 ```txt
 Complaint Intake
-→ Quick Response / Ticket Handling
+→ Quick Response
+→ Ticket Handling if Follow-up is Needed
 → Manager Action Queue
-→ Resolution
-→ Document Lookup
+→ Take Action Resolution
+→ Reference Lookup
 → History & Metrics
 ```
 
-The current schema is acceptable for the first backend version.
+The schema must support two main complaint-handling paths:
 
-AI/RAG-related tables are postponed. The system should still support document lookup using normal database tables, categories, tags, and search fields.
+```txt
+Path A:
+Complaint
+→ Quick Response with valid HEAT
+→ Resolved directly
+→ No ticket required
+
+Path B:
+Complaint
+→ Quick Response with HEA only
+→ Ticket created
+→ Action Request created or linked
+→ Manager provides Take Action
+→ Agent sends closure
+→ Resolved
+```
+
+AI/RAG-related tables are postponed. The system should still support reference lookup using normal database tables, categories, tags, source types, and search fields.
+
+The term **reference** is used instead of **document** because the source of information may be:
+
+```txt
+SOP
+FAQ
+policy
+guide
+template
+known issue
+external link
+uploaded file
+previous action
+internal note
+```
 
 ---
 
@@ -45,12 +78,13 @@ src/
   db/
     index.ts
     schema/
+      index.ts
       users.schema.ts
       complaints.schema.ts
       tickets.schema.ts
       quick-response.schema.ts
       action-requests.schema.ts
-      documents.schema.ts
+      references.schema.ts
       ticket-events.schema.ts
       audit-logs.schema.ts
       agent-performance.schema.ts
@@ -62,10 +96,12 @@ src/
       tickets.seed.ts
       quick-response.seed.ts
       action-requests.seed.ts
-      documents.seed.ts
+      references.seed.ts
       ticket-events.seed.ts
       agent-performance.seed.ts
 ```
+
+Do not create `documents.schema.ts` for v1. The reference system replaces the old document system.
 
 ---
 
@@ -80,13 +116,14 @@ Build the schema in this order to avoid foreign key dependency issues:
 4. quick_response_sessions
 5. action_requests
 6. action_request_complaints
-7. context_documents
-8. document_tags
-9. context_document_tags
-10. document_references
-11. ticket_events
-12. audit_logs
-13. agent_performance
+7. reference_sources
+8. reference_tags
+9. reference_source_tags
+10. quick_response_references
+11. action_request_references
+12. ticket_events
+13. audit_logs
+14. agent_performance
 ```
 
 ---
@@ -202,6 +239,14 @@ role required
 is_active default true
 ```
 
+Indexes:
+
+```txt
+email
+role
+is_active
+```
+
 ---
 
 ## 2. `complaints.schema.ts`
@@ -213,6 +258,18 @@ Purpose:
 ```txt
 Stores original customer complaints from public form or external channels.
 ```
+
+Important concept:
+
+```txt
+Complaint = original passenger/customer issue.
+```
+
+A complaint does not always become a ticket.
+
+If a valid HEAT response is available, the complaint may be resolved directly through Quick Response.
+
+If only HEA is available and Take Action is needed, the complaint must be turned into a ticket and linked to a manager action request.
 
 Fields:
 
@@ -263,10 +320,25 @@ complaint_category:
 ```txt
 complaint_status:
 - submitted
-- triaged
-- linked_to_ticket
+- waiting_action
 - resolved
 - closed
+```
+
+Status meaning:
+
+```txt
+submitted:
+Complaint has entered the system.
+
+waiting_action:
+HEA has been sent and the complaint is waiting for Take Action from manager/action request.
+
+resolved:
+A valid Take Action exists and the customer has been given resolution/closure.
+
+closed:
+Case is administratively closed.
 ```
 
 Important constraints:
@@ -301,6 +373,14 @@ Purpose:
 ```txt
 Stores internal agent work items created from complaints.
 ```
+
+Important concept:
+
+```txt
+Ticket = internal work item for agent follow-up.
+```
+
+A ticket is created when a complaint needs internal tracking, especially when HEA is sent but Take Action is not yet available.
 
 Fields:
 
@@ -342,7 +422,7 @@ Important constraints:
 
 ```txt
 complaint_id references complaints.id
-agent_id references users.id
+agent_id references users.id nullable
 complaint_id unique
 status default open
 priority default medium
@@ -351,7 +431,7 @@ priority default medium
 Reason for unique `complaint_id`:
 
 ```txt
-One complaint may become zero or one ticket.
+One complaint may become zero or one ticket in v1.
 ```
 
 Indexes:
@@ -374,6 +454,21 @@ Purpose:
 
 ```txt
 Stores agent response-composition sessions for complaints.
+```
+
+Important concept:
+
+```txt
+Quick Response Session = one response attempt/action by an agent.
+```
+
+A quick response session may represent:
+
+```txt
+HEAT response that resolves the complaint
+HEA response that triggers manager Take Action
+Draft/copy-only response
+Closure response after manager action is done
 ```
 
 Fields:
@@ -416,18 +511,39 @@ quick_response_outcome:
 - copy_only
 ```
 
+Outcome meaning:
+
+```txt
+sent_resolved:
+Agent sent a valid HEAT/final closure and the complaint can be resolved.
+
+sent_hea_action:
+Agent sent HEA only. Backend must create ticket and create/link action request.
+
+saved_ticket:
+Complaint is saved as ticket, but not necessarily escalated yet.
+
+escalated:
+Complaint is escalated to manager/action request.
+
+copy_only:
+Agent copied the response draft without changing the official workflow.
+```
+
 Important constraints:
 
 ```txt
 agent_id references users.id
 complaint_id references complaints.id
 ticket_id references tickets.id nullable
+outcome required
 ```
 
 Reason for nullable `ticket_id`:
 
 ```txt
 Quick Response can happen before a complaint becomes a ticket.
+A directly resolved complaint may never have a ticket.
 ```
 
 Indexes:
@@ -461,6 +577,14 @@ Purpose:
 Stores manager-level grouped issues/action queues.
 ```
 
+Important concept:
+
+```txt
+Action Request = manager-level grouped issue that provides Take Action.
+```
+
+Managers do not primarily handle individual tickets one by one. They handle clusters/groups of similar complaints.
+
 Fields:
 
 ```txt
@@ -488,6 +612,25 @@ action_request_status:
 - action_planned
 - action_taken
 - closed
+```
+
+Status meaning:
+
+```txt
+open:
+Cluster is created and waiting for manager review.
+
+reviewing:
+Manager is reviewing the issue.
+
+action_planned:
+Manager has planned or coordinated an action.
+
+action_taken:
+Take Action is available and can be used for final closure.
+
+closed:
+Manager action request is administratively closed.
 ```
 
 Important constraints:
@@ -523,6 +666,12 @@ Purpose:
 
 ```txt
 Join table for grouping many complaints/tickets into one manager action request.
+```
+
+Important concept:
+
+```txt
+One action request can cover many complaints and tickets.
 ```
 
 Fields:
@@ -563,9 +712,21 @@ agent_id
 
 ---
 
-## 6. `documents.schema.ts`
+## 6. `references.schema.ts`
 
-Create four tables:
+Create five tables:
+
+```txt
+reference_sources
+reference_tags
+reference_source_tags
+quick_response_references
+action_request_references
+```
+
+This replaces the old document schema.
+
+Do not create these old tables in v1:
 
 ```txt
 context_documents
@@ -576,27 +737,52 @@ document_references
 
 ---
 
-### `context_documents`
+### `reference_sources`
 
 Purpose:
 
 ```txt
-Stores SOP, FAQ, policy, guide, template, and known issue documents.
+Stores all reusable sources of information.
+```
+
+Important concept:
+
+```txt
+Reference Source = any source that can support a response or manager action.
+```
+
+A reference source is not always a document.
+
+It can be:
+
+```txt
+SOP
+FAQ
+policy
+guide
+template
+known issue
+external link
+uploaded file
+previous action
+internal note
 ```
 
 Fields:
 
 ```txt
 id
-uploaded_by
+created_by
+source_type
 title
-doc_type
 category
+content
+url
+file_url
 status
 version
-content
 search_text
-file_url
+metadata
 created_at
 updated_at
 ```
@@ -604,17 +790,21 @@ updated_at
 Enums:
 
 ```txt
-document_type:
+reference_source_type:
 - sop
 - faq
 - policy
 - guide
 - template
 - known_issue
+- external_link
+- uploaded_file
+- previous_action
+- internal_note
 ```
 
 ```txt
-document_status:
+reference_status:
 - active
 - draft
 - archived
@@ -623,37 +813,59 @@ document_status:
 Important constraints:
 
 ```txt
-uploaded_by references users.id
+created_by references users.id
+source_type required
 title required
-doc_type required
-category required
-status default draft
-```
-
-Indexes:
-
-```txt
-uploaded_by
-title
-doc_type
-category
-status
+status default active
 ```
 
 Purpose of `search_text`:
 
 ```txt
-Simple searchable text for v1 document lookup.
+Simple searchable text for v1 reference lookup before RAG exists.
+```
+
+Purpose of `metadata`:
+
+```txt
+Stores flexible extra information, such as original source table,
+external provider, file metadata, previous action ID, or display hints.
+```
+
+Indexes:
+
+```txt
+created_by
+source_type
+category
+status
+title
 ```
 
 ---
 
-### `document_tags`
+### `reference_tags`
 
 Purpose:
 
 ```txt
-Stores reusable document tags.
+Stores reusable tags for reference sources.
+```
+
+Example tags:
+
+```txt
+refund
+payment_failed
+saldo_terpotong
+ticket_not_issued
+delay
+cancellation
+app_error
+facility
+lost_item
+gateway_timeout
+closure_template
 ```
 
 Fields:
@@ -670,91 +882,188 @@ Important constraints:
 name unique
 ```
 
-Example tags:
+Indexes:
 
 ```txt
-refund
-payment_failed
-saldo_terpotong
-ticket_not_issued
-delay
-cancellation
-app_error
-facility
-lost_item
+name
 ```
 
 ---
 
-### `context_document_tags`
+### `reference_source_tags`
 
 Purpose:
 
 ```txt
-Many-to-many join table between documents and tags.
+Many-to-many join table between reference sources and tags.
 ```
 
 Fields:
 
 ```txt
-context_document_id
+reference_source_id
 tag_id
 ```
 
 Important constraints:
 
 ```txt
-context_document_id references context_documents.id
-tag_id references document_tags.id
-unique(context_document_id, tag_id)
+reference_source_id references reference_sources.id
+tag_id references reference_tags.id
+unique(reference_source_id, tag_id)
+```
+
+Reason:
+
+```txt
+One reference source can have many tags.
+One tag can be used by many reference sources.
 ```
 
 ---
 
-### `document_references`
+### `quick_response_references`
 
 Purpose:
 
 ```txt
-Records when an agent references a document during ticket or quick response handling.
+Records which reference sources were used in a Quick Response session.
 ```
+
+Important concept:
+
+```txt
+This answers:
+"Which references were used by the agent to create this HEA/HEAT response?"
+```
+
+This table supports cases where a complaint is resolved directly without becoming a ticket.
 
 Fields:
 
 ```txt
 id
-context_document_id
-ticket_id
 quick_response_session_id
+reference_source_id
 referenced_by
-reference_reason
+usage_type
+relevance_score
+snapshot_text
+note
 created_at
+```
+
+Enums:
+
+```txt
+quick_response_reference_usage:
+- response_basis
+- template_used
+- policy_support
+- known_issue
+- previous_resolution
+- action_closure
 ```
 
 Important constraints:
 
 ```txt
-context_document_id references context_documents.id
-ticket_id references tickets.id nullable
-quick_response_session_id references quick_response_sessions.id nullable
+quick_response_session_id references quick_response_sessions.id
+reference_source_id references reference_sources.id
 referenced_by references users.id
+usage_type required
 ```
 
-Business rule:
+Purpose of `snapshot_text`:
 
 ```txt
-Either ticket_id or quick_response_session_id must exist.
+Stores a copy of the reference content at the time it was used.
+This preserves history even if the original reference source changes later.
 ```
 
-This can be enforced in service validation first. Later, add a PostgreSQL CHECK constraint if needed.
+Purpose of `relevance_score`:
+
+```txt
+Optional score for future search/RAG ranking.
+Can be null in v1.
+```
 
 Indexes:
 
 ```txt
-context_document_id
-ticket_id
 quick_response_session_id
+reference_source_id
 referenced_by
+usage_type
+```
+
+---
+
+### `action_request_references`
+
+Purpose:
+
+```txt
+Records which reference sources were attached to a manager action request.
+```
+
+Important concept:
+
+```txt
+This answers:
+"Which evidence/link/SOP/note supports this manager Take Action?"
+```
+
+This table attaches references to the cluster/action request, not to individual tickets.
+
+Fields:
+
+```txt
+id
+action_request_id
+reference_source_id
+attached_by
+usage_type
+snapshot_text
+note
+created_at
+```
+
+Enums:
+
+```txt
+action_request_reference_usage:
+- evidence
+- action_basis
+- policy_support
+- closure_support
+- related_link
+- internal_note
+```
+
+Important constraints:
+
+```txt
+action_request_id references action_requests.id
+reference_source_id references reference_sources.id
+attached_by references users.id
+usage_type required
+```
+
+Purpose of `snapshot_text`:
+
+```txt
+Stores a copy of the reference content at the time it was attached.
+This preserves manager action history even if the original reference changes later.
+```
+
+Indexes:
+
+```txt
+action_request_id
+reference_source_id
+attached_by
+usage_type
 ```
 
 ---
@@ -790,6 +1099,7 @@ ticket_event_type:
 - hea_sent
 - escalated
 - manager_action_linked
+- manager_action_done
 - resolved
 - closed
 - reopened
@@ -856,7 +1166,8 @@ Notes:
 
 ```txt
 entity_type + entity_id is a polymorphic reference.
-It can point to complaints, tickets, action_requests, documents, users, etc.
+It can point to complaints, tickets, quick_response_sessions,
+action_requests, reference_sources, users, etc.
 ```
 
 Indexes:
@@ -918,10 +1229,12 @@ It should not become the source of truth for workflow.
 Source of truth should remain:
 
 ```txt
+complaints
 tickets
 quick_response_sessions
-ticket_events
+action_requests
 action_request_complaints
+ticket_events
 ```
 
 ---
@@ -946,8 +1259,10 @@ Relations to define:
 users → tickets
 users → quick_response_sessions
 users → action_requests
-users → context_documents
-users → document_references
+users → action_request_complaints
+users → reference_sources
+users → quick_response_references
+users → action_request_references
 users → ticket_events
 users → audit_logs
 users → agent_performance
@@ -960,27 +1275,39 @@ tickets → complaints
 tickets → users
 tickets → quick_response_sessions
 tickets → action_request_complaints
-tickets → document_references
 tickets → ticket_events
 
 quick_response_sessions → users
 quick_response_sessions → complaints
 quick_response_sessions → tickets
-quick_response_sessions → document_references
+quick_response_sessions → quick_response_references
 
 action_requests → users
 action_requests → action_request_complaints
+action_requests → action_request_references
 
-context_documents → users
-context_documents → context_document_tags
-context_documents → document_references
+action_request_complaints → action_requests
+action_request_complaints → complaints
+action_request_complaints → tickets
+action_request_complaints → users
 
-document_tags → context_document_tags
+reference_sources → users
+reference_sources → reference_source_tags
+reference_sources → quick_response_references
+reference_sources → action_request_references
 
-document_references → context_documents
-document_references → tickets
-document_references → quick_response_sessions
-document_references → users
+reference_tags → reference_source_tags
+
+reference_source_tags → reference_sources
+reference_source_tags → reference_tags
+
+quick_response_references → quick_response_sessions
+quick_response_references → reference_sources
+quick_response_references → users
+
+action_request_references → action_requests
+action_request_references → reference_sources
+action_request_references → users
 ```
 
 ---
@@ -1003,7 +1330,7 @@ export * from "./complaints.schema";
 export * from "./tickets.schema";
 export * from "./quick-response.schema";
 export * from "./action-requests.schema";
-export * from "./documents.schema";
+export * from "./references.schema";
 export * from "./ticket-events.schema";
 export * from "./audit-logs.schema";
 export * from "./agent-performance.schema";
@@ -1065,12 +1392,13 @@ Seeder order:
 4. quick_response_sessions
 5. action_requests
 6. action_request_complaints
-7. context_documents
-8. document_tags
-9. context_document_tags
-10. document_references
-11. ticket_events
-12. agent_performance
+7. reference_sources
+8. reference_tags
+9. reference_source_tags
+10. quick_response_references
+11. action_request_references
+12. ticket_events
+13. agent_performance
 ```
 
 ---
@@ -1143,6 +1471,13 @@ facility
 refund
 ```
 
+Seed at least two categories of complaints:
+
+```txt
+1. Complaints resolved directly with HEAT
+2. Complaints requiring HEA + manager Take Action
+```
+
 ---
 
 ## 4. `tickets.seed.ts`
@@ -1150,6 +1485,8 @@ refund
 Create tickets from some complaints only.
 
 Not every complaint should become a ticket.
+
+Create tickets mainly for complaints that need manager Take Action.
 
 Seed mixed statuses:
 
@@ -1188,6 +1525,13 @@ selected_take_action
 final_response
 ```
 
+Important seed rule:
+
+```txt
+If outcome = sent_resolved, selected_take_action should be filled.
+If outcome = sent_hea_action, selected_take_action may be null and ticket/action request should exist.
+```
+
 ---
 
 ## 6. `action-requests.seed.ts`
@@ -1203,17 +1547,17 @@ Delay notification issue
 Station facility issue
 ```
 
-Link multiple complaints to the same action request.
+Link multiple complaints to the same action request using `action_request_complaints`.
 
 This is important because manager queue should demonstrate grouped complaint handling.
 
 ---
 
-## 7. `documents.seed.ts`
+## 7. `references.seed.ts`
 
-Seed context documents.
+Seed reference sources.
 
-Example documents:
+Example reference sources:
 
 ```txt
 SOP Refund Saldo Terpotong
@@ -1222,9 +1566,27 @@ Panduan Menangani Keluhan Delay
 Template Respon App Review
 Known Issue Payment Gateway Timeout
 Panduan Barang Tertinggal
+Previous Action: Payment Gateway Timeout 25 Mei
+Internal Note: Refund Batch Coordination
+External Link: Payment Gateway Incident Report
 ```
 
-Create tags:
+Use varied source types:
+
+```txt
+sop
+faq
+policy
+guide
+template
+known_issue
+external_link
+uploaded_file
+previous_action
+internal_note
+```
+
+Create reference tags:
 
 ```txt
 refund
@@ -1236,9 +1598,39 @@ cancellation
 app_error
 lost_item
 facility
+gateway_timeout
+closure_template
 ```
 
-Attach tags to documents.
+Attach tags to reference sources using `reference_source_tags`.
+
+Seed quick response references:
+
+```txt
+quick_response_references
+```
+
+Examples:
+
+```txt
+A directly resolved HEAT answer uses FAQ Refund.
+A HEA initial response uses Template Respon App Review.
+A closure response uses Previous Action Payment Gateway Timeout.
+```
+
+Seed action request references:
+
+```txt
+action_request_references
+```
+
+Examples:
+
+```txt
+Payment deducted cluster uses Payment Gateway Incident Report.
+Cancellation failure cluster uses SOP Pembatalan Tiket.
+Delay notification cluster uses internal coordination note.
+```
 
 ---
 
@@ -1254,6 +1646,7 @@ assigned
 hea_sent
 escalated
 manager_action_linked
+manager_action_done
 closed
 ```
 
@@ -1306,13 +1699,26 @@ tickets
 quick_response_sessions
 action_requests
 action_request_complaints
+reference_sources
+reference_tags
+reference_source_tags
+quick_response_references
+action_request_references
+ticket_events
+audit_logs
+agent_performance
+```
+
+Verify these old tables do not exist in v1:
+
+```txt
 context_documents
 document_tags
 context_document_tags
 document_references
-ticket_events
-audit_logs
-agent_performance
+rag_sources
+rag_chunks
+rag_retrievals
 ```
 
 Verify these constraints:
@@ -1324,8 +1730,8 @@ complaints.tracking_token unique
 tickets.complaint_id unique
 action_requests.reference_no unique
 action_request_complaints unique(action_request_id, complaint_id)
-document_tags.name unique
-context_document_tags unique(context_document_id, tag_id)
+reference_tags.name unique
+reference_source_tags unique(reference_source_id, tag_id)
 agent_performance unique(agent_id, period_month, period_year)
 ```
 
@@ -1336,16 +1742,118 @@ ticket belongs to complaint
 ticket may belong to agent
 quick response belongs to complaint and agent
 quick response may belong to ticket
-action request groups many complaints
-documents can have many tags
-documents can be referenced by tickets or quick responses
+action request groups many complaints/tickets
+reference source can have many tags
+quick response can use many references
+action request can attach many references
 ticket has many events
 agent has monthly performance records
 ```
 
 ---
 
-# Phase 8 — What Not To Build Yet
+# Phase 8 — Workflow Validation
+
+Validate the schema supports these flows.
+
+## Flow A — Direct HEAT resolution
+
+```txt
+Complaint created
+Quick response session created
+Reference sources used through quick_response_references
+quick_response_sessions.outcome = sent_resolved
+complaints.status = resolved
+No ticket required
+No action request required
+```
+
+Tables involved:
+
+```txt
+complaints
+quick_response_sessions
+reference_sources
+quick_response_references
+```
+
+---
+
+## Flow B — HEA only, manager Take Action required
+
+```txt
+Complaint created
+Quick response session created
+Reference sources used through quick_response_references
+quick_response_sessions.outcome = sent_hea_action
+Ticket created
+tickets.status = waiting_manager_action
+Complaint updated
+complaints.status = waiting_action
+Action request created or found
+Complaint/ticket linked through action_request_complaints
+```
+
+Tables involved:
+
+```txt
+complaints
+quick_response_sessions
+quick_response_references
+reference_sources
+tickets
+action_requests
+action_request_complaints
+```
+
+---
+
+## Flow C — Manager provides Take Action
+
+```txt
+Manager updates action_requests.action_taken
+Manager updates action_requests.closure_message
+Manager attaches references through action_request_references
+action_requests.status = action_taken
+Linked tickets move to manager_action_done
+```
+
+Tables involved:
+
+```txt
+action_requests
+action_request_complaints
+action_request_references
+reference_sources
+tickets
+```
+
+---
+
+## Flow D — Agent sends final closure
+
+```txt
+Agent creates final quick_response_session
+selected_take_action uses manager closure/action
+quick_response_references records references used
+quick_response_sessions.outcome = sent_resolved
+complaints.status = resolved
+tickets.status = closed
+```
+
+Tables involved:
+
+```txt
+quick_response_sessions
+quick_response_references
+reference_sources
+complaints
+tickets
+```
+
+---
+
+# Phase 9 — What Not To Build Yet
 
 Do not build these tables in v1:
 
@@ -1362,13 +1870,13 @@ Reason:
 
 ```txt
 The current backend should focus on business workflow first.
-Document lookup is enough for v1.
+Reference lookup is enough for v1.
 RAG and ML can be added later after the workflow is stable.
 ```
 
 ---
 
-# Phase 9 — Future Extension Notes
+# Phase 10 — Future Extension Notes
 
 When AI/RAG becomes necessary, add a separate retrieval layer.
 
@@ -1383,7 +1891,7 @@ rag_retrievals
 Possible future sources:
 
 ```txt
-context_documents
+reference_sources
 resolved_tickets
 manager-approved action requests
 approved quick response sessions
@@ -1405,10 +1913,12 @@ The database should protect this separation:
 
 ```txt
 Complaint = original passenger issue
-Ticket = internal agent work item
 Quick Response Session = response composition/action session
-Action Request = manager-level grouped issue
-Document = support knowledge source
+Ticket = internal agent work item when follow-up is needed
+Action Request = manager-level grouped issue and source of Take Action
+Reference Source = reusable source of information, not only documents
+Quick Response Reference = source used in an agent response
+Action Request Reference = source/evidence used in manager Take Action
 Ticket Event = ticket timeline
 Audit Log = accountability record
 Agent Performance = derived metric snapshot

@@ -1,0 +1,182 @@
+import { sql } from "drizzle-orm";
+
+import type { Database } from "../index";
+import { quickResponseSessions, type NewQuickResponseSession } from "../schema";
+
+export const quickResponseSeedData = [
+  {
+    id: "00000000-0000-4000-8003-000000000001",
+    agentId: "00000000-0000-4000-8000-000000000004",
+    complaintId: "00000000-0000-4000-8001-000000000001",
+    ticketId: "00000000-0000-4000-8002-000000000001",
+    sourceChannel: "web_form",
+    responseTone: "calm",
+    responseTarget: "dm",
+    selectedHear: "Kami memahami saldo Anda terpotong tetapi tiket belum muncul.",
+    selectedEmpathize:
+      "Situasi ini tentu membuat rencana perjalanan menjadi tidak nyaman.",
+    selectedApologize: "Mohon maaf atas kendala transaksi yang terjadi.",
+    selectedTakeAction: null,
+    finalResponse:
+      "Kami memahami saldo Anda terpotong tetapi tiket belum muncul. Mohon maaf atas kendala transaksi yang terjadi. Tim kami sedang menindaklanjuti dan akan mengabari perkembangan berikutnya.",
+    outcome: "sent_hea_action",
+  },
+  {
+    id: "00000000-0000-4000-8003-000000000002",
+    agentId: "00000000-0000-4000-8000-000000000005",
+    complaintId: "00000000-0000-4000-8001-000000000002",
+    ticketId: "00000000-0000-4000-8002-000000000002",
+    sourceChannel: "twitter",
+    sourceHandle: "@rangga_access",
+    responseTone: "concise",
+    responseTarget: "public_reply",
+    selectedHear: "Kami memahami informasi delay belum diterima tepat waktu.",
+    selectedEmpathize:
+      "Keterlambatan tanpa pemberitahuan membuat perjalanan sulit direncanakan.",
+    selectedApologize: "Mohon maaf atas ketidaknyamanan tersebut.",
+    selectedTakeAction: null,
+    finalResponse:
+      "Kami memahami informasi delay belum diterima tepat waktu. Mohon maaf atas ketidaknyamanan tersebut. Kami koordinasikan pembaruan informasi dengan tim operasional.",
+    outcome: "escalated",
+  },
+  {
+    id: "00000000-0000-4000-8003-000000000003",
+    agentId: "00000000-0000-4000-8000-000000000006",
+    complaintId: "00000000-0000-4000-8001-000000000003",
+    ticketId: "00000000-0000-4000-8002-000000000003",
+    sourceChannel: "instagram",
+    sourceHandle: "@maya.travel",
+    responseTone: "friendly",
+    responseTarget: "dm",
+    selectedHear: "Kami memahami kendala pembatalan tiket dari aplikasi.",
+    selectedEmpathize:
+      "Kendala ini dapat menghambat pengaturan ulang perjalanan Anda.",
+    selectedApologize: "Mohon maaf atas gangguan yang Anda alami.",
+    selectedTakeAction: null,
+    finalResponse:
+      "Kami memahami kendala pembatalan tiket dari aplikasi. Mohon maaf atas gangguan yang Anda alami. Keluhan Anda kami simpan sebagai tiket agar dapat ditindaklanjuti.",
+    outcome: "saved_ticket",
+  },
+  {
+    id: "00000000-0000-4000-8003-000000000004",
+    agentId: "00000000-0000-4000-8000-000000000004",
+    complaintId: "00000000-0000-4000-8001-000000000004",
+    ticketId: null,
+    sourceChannel: "web_form",
+    responseTone: "helpful",
+    responseTarget: "dm",
+    selectedHear: "Kami memahami barang Anda tertinggal di kereta.",
+    selectedEmpathize:
+      "Kehilangan barang selama perjalanan pasti membuat khawatir.",
+    selectedApologize: "Mohon maaf atas ketidaknyamanan yang terjadi.",
+    selectedTakeAction:
+      "Silakan ambil nomor laporan LOST-2505 di loket layanan, barang telah diamankan petugas.",
+    finalResponse:
+      "Kami memahami barang Anda tertinggal di kereta. Mohon maaf atas ketidaknyamanan yang terjadi. Silakan ambil nomor laporan LOST-2505 di loket layanan, barang telah diamankan petugas.",
+    outcome: "sent_resolved",
+  },
+  {
+    id: "00000000-0000-4000-8003-000000000005",
+    agentId: "00000000-0000-4000-8000-000000000007",
+    complaintId: "00000000-0000-4000-8001-000000000005",
+    ticketId: "00000000-0000-4000-8002-000000000004",
+    sourceChannel: "google_play",
+    sourceHandle: "play-review-5",
+    responseTone: "formal",
+    responseTarget: "app_review",
+    selectedHear: "Kami memahami aplikasi error saat pembayaran.",
+    selectedEmpathize: "Gangguan pembayaran dapat menghambat pembelian tiket.",
+    selectedApologize: "Mohon maaf atas kendala pada aplikasi.",
+    selectedTakeAction: null,
+    finalResponse:
+      "Kami memahami aplikasi error saat pembayaran. Mohon maaf atas kendala pada aplikasi. Tim terkait sedang memeriksa transaksi terdampak.",
+    outcome: "sent_hea_action",
+  },
+  {
+    id: "00000000-0000-4000-8003-000000000006",
+    agentId: "00000000-0000-4000-8000-000000000005",
+    complaintId: "00000000-0000-4000-8001-000000000006",
+    ticketId: null,
+    sourceChannel: "app_store",
+    sourceHandle: "ios-review-6",
+    responseTone: "formal",
+    responseTarget: "app_review",
+    selectedHear: "Kami memahami refund belum diterima setelah transaksi gagal.",
+    selectedEmpathize:
+      "Menunggu refund tanpa kepastian tentu tidak nyaman bagi Anda.",
+    selectedApologize: "Mohon maaf atas waktu tunggu yang terjadi.",
+    selectedTakeAction:
+      "Refund Anda telah masuk antrean batch hari ini dan estimasi selesai 1x24 jam.",
+    finalResponse:
+      "Kami memahami refund belum diterima setelah transaksi gagal. Mohon maaf atas waktu tunggu yang terjadi. Refund Anda telah masuk antrean batch hari ini dan estimasi selesai 1x24 jam.",
+    outcome: "sent_resolved",
+  },
+  {
+    id: "00000000-0000-4000-8003-000000000007",
+    agentId: "00000000-0000-4000-8000-000000000008",
+    complaintId: "00000000-0000-4000-8001-000000000007",
+    ticketId: "00000000-0000-4000-8002-000000000005",
+    sourceChannel: "facebook",
+    sourceHandle: "nanda.access",
+    responseTone: "calm",
+    responseTarget: "public_reply",
+    selectedHear: "Kami memahami fasilitas stasiun tidak berfungsi baik.",
+    selectedEmpathize:
+      "Fasilitas yang bermasalah dapat mengganggu kenyamanan perjalanan.",
+    selectedApologize: "Mohon maaf atas pengalaman tersebut.",
+    selectedTakeAction:
+      "Petugas telah memperbaiki fasilitas dan melakukan pengecekan ulang.",
+    finalResponse:
+      "Kami memahami fasilitas stasiun tidak berfungsi baik. Mohon maaf atas pengalaman tersebut. Petugas telah memperbaiki fasilitas dan melakukan pengecekan ulang.",
+    outcome: "sent_resolved",
+  },
+  {
+    id: "00000000-0000-4000-8003-000000000008",
+    agentId: "00000000-0000-4000-8000-000000000006",
+    complaintId: "00000000-0000-4000-8001-000000000008",
+    ticketId: "00000000-0000-4000-8002-000000000006",
+    sourceChannel: "other",
+    sourceHandle: "call-center",
+    responseTone: "neutral",
+    responseTarget: "internal_note",
+    selectedHear: "Call center mencatat perubahan jadwal tidak tampil.",
+    selectedEmpathize: null,
+    selectedApologize: null,
+    selectedTakeAction: null,
+    finalResponse:
+      "Draft internal: cek sinkronisasi jadwal dan notifikasi untuk rute terdampak.",
+    outcome: "copy_only",
+  },
+] as const satisfies ReadonlyArray<NewQuickResponseSession>;
+
+export const seedQuickResponseSessions = async (
+  db: Database,
+): Promise<number> => {
+  const now = new Date("2026-05-27T03:10:00.000Z");
+
+  const seededSessions = await db
+    .insert(quickResponseSessions)
+    .values(quickResponseSeedData.map((session) => ({ ...session, updatedAt: now })))
+    .onConflictDoUpdate({
+      target: quickResponseSessions.id,
+      set: {
+        agentId: sql`excluded.agent_id`,
+        complaintId: sql`excluded.complaint_id`,
+        ticketId: sql`excluded.ticket_id`,
+        sourceChannel: sql`excluded.source_channel`,
+        sourceHandle: sql`excluded.source_handle`,
+        responseTone: sql`excluded.response_tone`,
+        responseTarget: sql`excluded.response_target`,
+        selectedHear: sql`excluded.selected_hear`,
+        selectedEmpathize: sql`excluded.selected_empathize`,
+        selectedApologize: sql`excluded.selected_apologize`,
+        selectedTakeAction: sql`excluded.selected_take_action`,
+        finalResponse: sql`excluded.final_response`,
+        outcome: sql`excluded.outcome`,
+        updatedAt: now,
+      },
+    })
+    .returning({ id: quickResponseSessions.id });
+
+  return seededSessions.length;
+};

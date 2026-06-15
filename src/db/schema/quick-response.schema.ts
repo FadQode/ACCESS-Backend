@@ -49,7 +49,7 @@ export const quickResponseSessions = pgTable(
     selectedApologize: text("selected_apologize"),
     selectedTakeAction: text("selected_take_action"),
     finalResponse: text("final_response"),
-    outcome: quickResponseOutcomeEnum("outcome"),
+    outcome: quickResponseOutcomeEnum("outcome").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
