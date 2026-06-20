@@ -68,9 +68,6 @@ describe("OpenAPI documentation", () => {
       const scalarSlashResponse = await app.handle(
         new Request("http://localhost/docs/"),
       );
-      const scalarBundleResponse = await app.handle(
-        new Request("http://localhost/docs/scalar.standalone.js"),
-      );
       const specResponse = await app.handle(
         new Request("http://localhost/docs/openapi.json"),
       );
@@ -80,14 +77,10 @@ describe("OpenAPI documentation", () => {
       expect(scalarResponse.headers.get("content-type")).toContain("text/html");
       const scalarHtml = await scalarResponse.text();
       expect(scalarHtml).toContain('"url":"/docs/openapi.json"');
-      expect(scalarHtml).toContain('"cdn":"/docs/scalar.standalone.js"');
-      expect(scalarHtml).toContain('src="/docs/scalar.standalone.js"');
-      expect(scalarHtml).not.toContain("cdn.jsdelivr.net");
+      expect(scalarHtml).toContain("cdn.jsdelivr.net");
+      expect(scalarHtml).toContain("@scalar/api-reference@1.60.0");
+      expect(scalarHtml).not.toContain("/docs/scalar.standalone.js");
       expect(scalarSlashResponse.status).toBe(200);
-      expect(scalarBundleResponse.status).toBe(200);
-      expect(scalarBundleResponse.headers.get("content-type")).toContain(
-        "application/javascript",
-      );
 
       expect(specResponse.status).toBe(200);
       expect(document.openapi).toBe("3.0.3");
@@ -144,13 +137,9 @@ describe("OpenAPI documentation", () => {
 
     try {
       const response = await app.handle(new Request("http://localhost/docs"));
-      const bundleResponse = await app.handle(
-        new Request("http://localhost/docs/scalar.standalone.js"),
-      );
 
       expect(config.openApi.enabled).toBe(false);
       expect(response.status).toBe(404);
-      expect(bundleResponse.status).toBe(404);
     } finally {
       await database.close();
     }
