@@ -69,6 +69,8 @@ const getDeploymentApp = () => {
   return deploymentApp;
 };
 
-export default function handleRequest(request: Request) {
+export const fetch = (request: Request) => {
   return getDeploymentApp().handle(request);
-}
+};
+
+export default { fetch };
