@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createApp } from "../src/app";
+import { createApp } from "../src/application";
 import { loadEnv } from "../src/config/env";
 import { createDatabase } from "../src/db";
 

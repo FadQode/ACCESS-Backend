@@ -1,76 +1,8 @@
-import { Elysia, t } from "elysia";
+import { createApp } from "./application";
+import { env } from "./config/env";
+import { createDatabase } from "./db";
 
-import { env, type AppConfig } from "./config/env";
-import { createDatabase, type Database } from "./db";
-import { createCorsPlugin } from "./plugins/cors.plugin";
-import { createDatabasePlugin } from "./plugins/database.plugin";
-import { errorPlugin } from "./plugins/error.plugin";
-import { loggerPlugin } from "./plugins/logger.plugin";
-import { createOpenApiPlugin } from "./plugins/openapi.plugin";
-import { responsePlugin } from "./plugins/response.plugin";
-import { createRoutes } from "./routes";
-import { successResponse } from "./shared/http/response";
+const database = createDatabase(env.database);
+const app = createApp({ config: env, db: database.db });
 
-export interface AppDependencies {
-  config: AppConfig;
-  db: Database;
-}
-
-export const createApp = ({ config, db }: AppDependencies) =>
-  new Elysia({ name: "access-api" })
-    .use(loggerPlugin)
-    .use(createCorsPlugin(config.corsOrigins, config.corsCredentials))
-    .use(errorPlugin)
-    .use(createOpenApiPlugin(config))
-    .use(responsePlugin)
-    .use(createDatabasePlugin(db))
-    .get(
-      "/",
-      () =>
-        successResponse(
-          {
-            service: config.appName,
-            version: config.appVersion,
-            environment: config.nodeEnv,
-          },
-          "Service is running",
-        ),
-      {
-        response: t.Object(
-          {
-            success: t.Literal(true),
-            message: t.String(),
-            data: t.Object({
-              service: t.String(),
-              version: t.String(),
-              environment: t.String(),
-            }),
-          },
-          { description: "Service identity and runtime environment." },
-        ),
-        detail: {
-          tags: ["System"],
-          summary: "Get service information",
-        },
-      },
-    )
-    .use(createRoutes(config, db));
-
-export type App = ReturnType<typeof createApp>;
-
-let deploymentApp: App | undefined;
-
-const getDeploymentApp = () => {
-  if (!deploymentApp) {
-    const database = createDatabase(env.database);
-    deploymentApp = createApp({ config: env, db: database.db });
-  }
-
-  return deploymentApp;
-};
-
-export const fetch = (request: Request) => {
-  return getDeploymentApp().handle(request);
-};
-
-export default { fetch };
+export default app;

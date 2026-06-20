@@ -1,1 +1,1 @@
-export { default, fetch } from "./app";
+export { default } from "./app";
