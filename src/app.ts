@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 
-import type { AppConfig } from "./config/env";
-import type { Database } from "./db";
+import { env, type AppConfig } from "./config/env";
+import { createDatabase, type Database } from "./db";
 import { createCorsPlugin } from "./plugins/cors.plugin";
 import { createDatabasePlugin } from "./plugins/database.plugin";
 import { errorPlugin } from "./plugins/error.plugin";
@@ -57,3 +57,18 @@ export const createApp = ({ config, db }: AppDependencies) =>
     .use(createRoutes(config, db));
 
 export type App = ReturnType<typeof createApp>;
+
+let deploymentApp: App | undefined;
+
+const getDeploymentApp = () => {
+  if (!deploymentApp) {
+    const database = createDatabase(env.database);
+    deploymentApp = createApp({ config: env, db: database.db });
+  }
+
+  return deploymentApp;
+};
+
+export default function handleRequest(request: Request) {
+  return getDeploymentApp().handle(request);
+}
