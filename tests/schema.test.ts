@@ -117,6 +117,14 @@ describe("database schema", () => {
     expect(
       configFor(complaints).indexes.map((index) => index.config.name),
     ).toContain("complaints_created_at_idx");
+    expect(
+      configFor(actionRequests).indexes.map((index) => index.config.name),
+    ).toEqual(
+      expect.arrayContaining([
+        "action_requests_issue_key_idx",
+        "action_requests_grouping_key_idx",
+      ]),
+    );
   });
 
   test("enforces expected foreign-key counts", () => {

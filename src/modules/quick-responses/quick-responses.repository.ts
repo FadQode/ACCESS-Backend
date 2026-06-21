@@ -20,7 +20,7 @@ export const createQuickResponsesRepository = (
   async createQuickResponseSession(input, executor = db) {
     const [createdSession] = await executor
       .insert(quickResponseSessions)
-      .values({ ...input, ticketId: null })
+      .values({ ...input, ticketId: input.ticketId ?? null })
       .returning();
 
     if (!createdSession) {

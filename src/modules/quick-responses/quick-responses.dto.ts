@@ -44,7 +44,21 @@ export const saveQuickResponseBodySchema = t.Object({
   }),
 });
 
+export const saveComplaintQuickResponseBodySchema = t.Composite([
+  saveQuickResponseBodySchema.properties.response,
+  t.Object({
+    ticketId: t.Optional(t.Union([t.String({ format: "uuid" }), t.Null()])),
+  }),
+]);
+
 const dateTimeSchema = t.String({ format: "date-time" });
+const ticketSummarySchema = t.Union([
+  t.Object({
+    id: t.String({ format: "uuid" }),
+    status: t.String(),
+  }),
+  t.Null(),
+]);
 
 export const saveQuickResponseResponseSchema = t.Object({
   success: t.Literal(true),
@@ -65,6 +79,26 @@ export const saveQuickResponseResponseSchema = t.Object({
       finalResponse: t.Union([t.String(), t.Null()]),
       createdAt: dateTimeSchema,
     }),
+    ticket: ticketSummarySchema,
     requiresFollowUp: t.Boolean(),
+  }),
+});
+
+export const saveComplaintQuickResponseResponseSchema = t.Object({
+  success: t.Literal(true),
+  message: t.String(),
+  data: t.Object({
+    quickResponseSession: t.Object({
+      id: t.String({ format: "uuid" }),
+      outcome: stableQuickResponseOutcomeSchema,
+      finalResponse: t.Union([t.String(), t.Null()]),
+      createdAt: dateTimeSchema,
+    }),
+    ticket: ticketSummarySchema,
+    complaint: t.Object({
+      id: t.String({ format: "uuid" }),
+      status: complaintStatusSchema,
+      resolvedAt: t.Union([dateTimeSchema, t.Null()]),
+    }),
   }),
 });

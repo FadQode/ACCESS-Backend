@@ -18,10 +18,16 @@ import {
   updateComplaintStatusBodySchema,
 } from "./complaints.dto";
 import type { ComplaintsService } from "./complaints.service";
+import {
+  saveComplaintQuickResponseBodySchema,
+  saveComplaintQuickResponseResponseSchema,
+} from "../quick-responses/quick-responses.dto";
+import type { QuickResponsesService } from "../quick-responses/quick-responses.service";
 
 export interface ComplaintRoutesDependencies {
   authService: AuthService;
   complaintsService: ComplaintsService;
+  quickResponsesService: QuickResponsesService;
 }
 
 const protectedErrors = {
@@ -33,7 +39,11 @@ const protectedErrors = {
 
 export const createComplaintRoutes = (
   config: AppConfig,
-  { authService, complaintsService }: ComplaintRoutesDependencies,
+  {
+    authService,
+    complaintsService,
+    quickResponsesService,
+  }: ComplaintRoutesDependencies,
 ) =>
   new Elysia({ name: "complaint-routes", prefix: "/complaints" })
     .use(createAccessTokenPlugin(config))
@@ -119,6 +129,39 @@ export const createComplaintRoutes = (
         detail: {
           tags: ["Complaints"],
           summary: "Update complaint status",
+          security: [{ bearerAuth: [] }],
+        },
+      },
+    )
+    .post(
+      "/:id/quick-responses",
+      async ({ accessToken, headers, params, body, set }) => {
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        const result = await quickResponsesService.saveQuickResponseForComplaint(
+          params.id,
+          body,
+          currentUser,
+        );
+        set.status = 201;
+        return successResponse(result, "Complaint quick response saved");
+      },
+      {
+        params: complaintParamsSchema,
+        body: saveComplaintQuickResponseBodySchema,
+        response: {
+          201: saveComplaintQuickResponseResponseSchema,
+          400: apiErrorResponseSchema,
+          ...protectedErrors,
+        },
+        detail: {
+          tags: ["Quick Responses"],
+          summary: "Save a quick response for an existing complaint",
+          description:
+            "Used for final agent closure after manager action or for an additional manual response.",
           security: [{ bearerAuth: [] }],
         },
       },

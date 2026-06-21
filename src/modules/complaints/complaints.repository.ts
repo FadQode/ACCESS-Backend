@@ -28,7 +28,10 @@ export interface ComplaintsRepository {
     items: Array<typeof complaints.$inferSelect>;
     total: number;
   }>;
-  findComplaintById(id: string): Promise<typeof complaints.$inferSelect | null>;
+  findComplaintById(
+    id: string,
+    executor?: DatabaseExecutor,
+  ): Promise<typeof complaints.$inferSelect | null>;
   findComplaintDetailById(id: string): Promise<{
     complaint: typeof complaints.$inferSelect;
     quickResponseSessions: Array<{
@@ -62,6 +65,7 @@ export interface ComplaintsRepository {
     id: string,
     status: typeof complaints.$inferSelect.status,
     resolvedAt: Date | null,
+    executor?: DatabaseExecutor,
   ): Promise<typeof complaints.$inferSelect | null>;
 }
 
@@ -121,8 +125,8 @@ export const createComplaintsRepository = (
     return { items, total: totalResult?.value ?? 0 };
   },
 
-  async findComplaintById(id) {
-    const [complaint] = await db
+  async findComplaintById(id, executor = db) {
+    const [complaint] = await executor
       .select()
       .from(complaints)
       .where(eq(complaints.id, id))
@@ -184,8 +188,8 @@ export const createComplaintsRepository = (
     return updatedComplaint ?? null;
   },
 
-  async updateComplaintStatus(id, status, resolvedAt) {
-    const [updatedComplaint] = await db
+  async updateComplaintStatus(id, status, resolvedAt, executor = db) {
+    const [updatedComplaint] = await executor
       .update(complaints)
       .set({ status, resolvedAt, updatedAt: new Date() })
       .where(eq(complaints.id, id))

@@ -15,7 +15,9 @@ export const actionRequestSeedData = [
     referenceNo: "AR-2026-0001",
     clusterLabel: "Payment deducted but ticket not issued",
     category: "payment",
-    status: "action_planned",
+    issueKey: "payment_failed",
+    groupingKey: "payment:payment_failed",
+    status: "open",
     issueSummary:
       "Payment gateway accepted charge but ticket issuance callback was delayed for multiple passengers.",
     actionTaken:
@@ -29,6 +31,8 @@ export const actionRequestSeedData = [
     referenceNo: "AR-2026-0002",
     clusterLabel: "Delay notification issue",
     category: "delay",
+    issueKey: "train_delay",
+    groupingKey: "delay:train_delay",
     status: "action_taken",
     issueSummary:
       "Delay notification was not delivered consistently through app and station announcement channels.",
@@ -44,6 +48,8 @@ export const actionRequestSeedData = [
     referenceNo: "AR-2026-0003",
     clusterLabel: "App cancellation failure",
     category: "cancellation",
+    issueKey: "cancellation_issue",
+    groupingKey: "cancellation:cancellation_issue",
     status: "reviewing",
     issueSummary:
       "Customers cannot cancel tickets from app for selected booking states.",
@@ -54,6 +60,8 @@ export const actionRequestSeedData = [
     referenceNo: "AR-2026-0004",
     clusterLabel: "Station facility issue",
     category: "facility",
+    issueKey: "facility_general",
+    groupingKey: "facility:facility_general",
     status: "closed",
     issueSummary:
       "Station passenger facility was unavailable during morning traffic.",
@@ -129,6 +137,8 @@ export const seedActionRequests = async (db: Database): Promise<number> => {
         referenceNo: sql`excluded.reference_no`,
         clusterLabel: sql`excluded.cluster_label`,
         category: sql`excluded.category`,
+        issueKey: sql`excluded.issue_key`,
+        groupingKey: sql`excluded.grouping_key`,
         status: sql`excluded.status`,
         issueSummary: sql`excluded.issue_summary`,
         actionTaken: sql`excluded.action_taken`,

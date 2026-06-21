@@ -44,6 +44,7 @@ export const createQuickResponseRoutes = (
         body: saveQuickResponseBodySchema,
         response: {
           201: saveQuickResponseResponseSchema,
+          400: apiErrorResponseSchema,
           401: apiErrorResponseSchema,
           403: apiErrorResponseSchema,
           422: apiErrorResponseSchema,
@@ -52,7 +53,7 @@ export const createQuickResponseRoutes = (
           tags: ["Quick Responses"],
           summary: "Save a manual quick response",
           description:
-            "Atomically creates a complaint and its manual quick response session. No ticket or manager action is created in this phase.",
+            "Atomically creates a complaint and its manual quick response session. The sent_hea_action outcome also creates a ticket for escalation.",
           security: [{ bearerAuth: [] }],
         },
       },

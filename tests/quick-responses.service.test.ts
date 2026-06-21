@@ -6,10 +6,12 @@ import type {
 } from "../src/db";
 import type { QuickResponseSession } from "../src/db/schema";
 import type { AuthUser } from "../src/modules/auth/auth.types";
+import type { ComplaintsRepository } from "../src/modules/complaints/complaints.repository";
 import type { ComplaintsService } from "../src/modules/complaints/complaints.service";
 import type { QuickResponsesRepository } from "../src/modules/quick-responses/quick-responses.repository";
 import { createQuickResponsesService } from "../src/modules/quick-responses/quick-responses.service";
 import type { StableQuickResponseOutcome } from "../src/modules/quick-responses/quick-responses.types";
+import type { TicketsService } from "../src/modules/tickets/tickets.service";
 
 const agent: AuthUser = {
   id: "00000000-0000-4000-8000-000000000004",
@@ -43,6 +45,8 @@ describe("quick responses service", () => {
       let transactionCount = 0;
       let createdStatus = "";
       let createdSessionOutcome = "";
+      let createdSessionTicketId: string | null | undefined;
+      let createdTicketComplaintId = "";
       const transactionManager: DatabaseTransactionManager = {
         async transaction(callback) {
           transactionCount += 1;
@@ -71,10 +75,11 @@ describe("quick responses service", () => {
       const repository = {
         async createQuickResponseSession(input) {
           createdSessionOutcome = input.outcome;
+          createdSessionTicketId = input.ticketId;
           return {
             ...input,
             id: "20000000-0000-4000-8000-000000000001",
-            ticketId: null,
+            ticketId: input.ticketId ?? null,
             createdAt: now,
             updatedAt: now,
           } as QuickResponseSession;
@@ -83,10 +88,30 @@ describe("quick responses service", () => {
           return [];
         },
       } as QuickResponsesRepository;
+      const ticketsService = {
+        async createTicketFromComplaint(input) {
+          createdTicketComplaintId = input.complaintId;
+          return {
+            id: "30000000-0000-4000-8000-000000000001",
+            complaintId: input.complaintId,
+            agentId: input.agentId,
+            status: "hea_sent",
+            priority: "medium",
+            heaResponse: input.heaResponse,
+            heaSentAt: input.heaSentAt ?? now,
+            closureMessage: null,
+            closureSentAt: null,
+            createdAt: now,
+            updatedAt: now,
+          };
+        },
+      } as TicketsService;
       const service = createQuickResponsesService(
         transactionManager,
         complaintsService,
+        {} as ComplaintsRepository,
         repository,
+        ticketsService,
       );
 
       const result = await service.saveQuickResponse(inputFor(outcome), agent);
@@ -95,6 +120,21 @@ describe("quick responses service", () => {
       expect(createdStatus).toBe(expectedStatus);
       expect(createdSessionOutcome).toBe(outcome);
       expect(result.requiresFollowUp).toBe(requiresFollowUp);
+      expect(result.ticket?.id ?? null).toBe(
+        outcome === "sent_hea_action"
+          ? "30000000-0000-4000-8000-000000000001"
+          : null,
+      );
+      expect(createdSessionTicketId ?? null).toBe(
+        outcome === "sent_hea_action"
+          ? "30000000-0000-4000-8000-000000000001"
+          : null,
+      );
+      expect(createdTicketComplaintId).toBe(
+        outcome === "sent_hea_action"
+          ? "10000000-0000-4000-8000-000000000001"
+          : "",
+      );
     },
   );
 
@@ -107,7 +147,9 @@ describe("quick responses service", () => {
     const service = createQuickResponsesService(
       transactionManager,
       {} as ComplaintsService,
+      {} as ComplaintsRepository,
       {} as QuickResponsesRepository,
+      {} as TicketsService,
     );
 
     await expect(

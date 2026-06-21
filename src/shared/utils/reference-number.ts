@@ -13,3 +13,8 @@ export const generateComplaintReferenceNo = (date = new Date()): string => {
   const datePart = date.toISOString().slice(0, 10).replaceAll("-", "");
   return `ACC-${datePart}-${randomSuffix(4)}`;
 };
+
+export const generateActionRequestReferenceNo = (date = new Date()): string => {
+  const datePart = date.toISOString().slice(0, 10).replaceAll("-", "");
+  return `AR-${datePart}-${randomSuffix(4)}`;
+};

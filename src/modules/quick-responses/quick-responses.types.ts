@@ -35,6 +35,7 @@ export interface SaveQuickResponseInput {
 export interface CreateQuickResponseSessionInput {
   agentId: string;
   complaintId: string;
+  ticketId?: string | null;
   sourceChannel: ComplaintSource;
   sourceHandle: string | null;
   responseTone: string | null;
