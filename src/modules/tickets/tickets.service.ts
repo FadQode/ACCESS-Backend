@@ -41,6 +41,31 @@ const assertCanReadTickets = (currentUser: AuthUser): void => {
   }
 };
 
+const applyTicketListScope = (
+  filters: TicketFilters,
+  currentUser: AuthUser,
+): TicketFilters => {
+  if (currentUser.role === "agent") {
+    return { ...filters, agentId: currentUser.id };
+  }
+
+  if (currentUser.role === "admin") {
+    return filters;
+  }
+
+  const { agentId: _agentId, ...safeFilters } = filters;
+  return safeFilters;
+};
+
+const assertAgentOwnsTicket = (
+  ticket: Pick<Ticket, "agentId">,
+  currentUser: AuthUser,
+): void => {
+  if (currentUser.role === "agent" && ticket.agentId !== currentUser.id) {
+    throw new NotFoundError("Ticket not found", "TICKET_NOT_FOUND");
+  }
+};
+
 const toListItem = (ticket: TicketJoinedRecord): TicketListItem => ({
   id: ticket.id,
   complaintId: ticket.complaintId,
@@ -114,6 +139,7 @@ export interface TicketsService {
     executor?: DatabaseExecutor,
   ): Promise<Ticket>;
   findTicketById(id: string, executor?: DatabaseExecutor): Promise<Ticket | null>;
+  assertCanAccessTicket(ticket: Pick<Ticket, "agentId">, currentUser: AuthUser): void;
 }
 
 export const createTicketsService = (
@@ -128,27 +154,48 @@ export const createTicketsService = (
       executor,
     );
 
-    if (existing) return existing;
+    const ticket =
+      existing ??
+      (await ticketsRepository.createTicket(
+        {
+          complaintId: input.complaintId,
+          agentId: input.agentId,
+          status: "hea_sent",
+          priority: "medium",
+          heaResponse: normalizeText(input.heaResponse),
+          heaSentAt: input.heaSentAt ?? new Date(),
+        },
+        executor,
+      ));
 
-    return ticketsRepository.createTicket(
+    const complaint = await complaintsRepository.findComplaintById(
+      ticket.complaintId,
+      executor,
+    );
+
+    if (!complaint) {
+      throw new NotFoundError("Complaint not found", "COMPLAINT_NOT_FOUND");
+    }
+
+    await actionRequestsService.createOrReuseForTicket(
       {
-        complaintId: input.complaintId,
+        ticket,
+        complaint,
         agentId: input.agentId,
-        status: "hea_sent",
-        priority: "medium",
-        heaResponse: normalizeText(input.heaResponse),
-        heaSentAt: input.heaSentAt ?? new Date(),
       },
       executor,
     );
+
+    return ticket;
   },
 
   async listTickets(filters, currentUser) {
     assertCanReadTickets(currentUser);
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 20;
+    const scopedFilters = applyTicketListScope(filters, currentUser);
     const result = await ticketsRepository.findTickets({
-      ...filters,
+      ...scopedFilters,
       page,
       limit,
     });
@@ -172,6 +219,8 @@ export const createTicketsService = (
       throw new NotFoundError("Ticket not found", "TICKET_NOT_FOUND");
     }
 
+    assertAgentOwnsTicket(ticket, currentUser);
+
     return toDetail(ticket);
   },
 
@@ -184,6 +233,8 @@ export const createTicketsService = (
       if (!ticket) {
         throw new NotFoundError("Ticket not found", "TICKET_NOT_FOUND");
       }
+
+      assertAgentOwnsTicket(ticket, currentUser);
 
       if (ticket.status === "closed") {
         throw new BadRequestError(
@@ -247,6 +298,8 @@ export const createTicketsService = (
       throw new NotFoundError("Ticket not found", "TICKET_NOT_FOUND");
     }
 
+    assertAgentOwnsTicket(ticket, currentUser);
+
     if (ticket.status === "waiting_manager_action") {
       throw new BadRequestError(
         "Manager action has not been completed yet",
@@ -276,5 +329,9 @@ export const createTicketsService = (
 
   async findTicketById(id, executor) {
     return ticketsRepository.findTicketById(id, executor);
+  },
+
+  assertCanAccessTicket(ticket, currentUser) {
+    assertAgentOwnsTicket(ticket, currentUser);
   },
 });

@@ -169,8 +169,11 @@ export const createActionRequestsRepository = (
       .where(
         and(
           eq(actionRequests.groupingKey, groupingKey),
-          inArray(actionRequests.status, ["open", "reviewing"]),
-          gte(actionRequests.raisedAt, since),
+          inArray(actionRequests.status, ["open", "reviewing", "action_planned"]),
+          or(
+            eq(actionRequests.status, "action_planned"),
+            gte(actionRequests.raisedAt, since),
+          )!,
         ),
       )
       .orderBy(desc(actionRequests.raisedAt))

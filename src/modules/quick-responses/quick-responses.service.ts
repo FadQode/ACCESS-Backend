@@ -208,6 +208,10 @@ export const createQuickResponsesService = (
         throw new NotFoundError("Ticket not found", "TICKET_NOT_FOUND");
       }
 
+      if (ticket) {
+        ticketsService.assertCanAccessTicket(ticket, currentUser);
+      }
+
       if (input.outcome === "sent_resolved" && ticket) {
         if (ticket.status === "waiting_manager_action") {
           throw new BadRequestError(

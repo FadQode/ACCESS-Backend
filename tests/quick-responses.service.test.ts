@@ -177,4 +177,87 @@ describe("quick responses service", () => {
       code: "FINAL_RESPONSE_REQUIRED",
     });
   });
+
+  test("rejects an existing complaint quick response when the ticket belongs to another agent", async () => {
+    let sessionWasCreated = false;
+    const transactionManager: DatabaseTransactionManager = {
+      async transaction(callback) {
+        return callback({} as DatabaseExecutor);
+      },
+    };
+    const complaintsRepository = {
+      async findComplaintById() {
+        return {
+          id: "10000000-0000-4000-8000-000000000001",
+          referenceNo: "ACC-20260615-TEST",
+          trackingToken: "trk_test",
+          source: "app_store",
+          sourceHandle: null,
+          sourceUrl: null,
+          complainerName: null,
+          complainerContact: null,
+          category: "payment",
+          complaintText: "Saldo sudah terpotong tapi tiket tidak muncul.",
+          status: "waiting_action",
+          submittedAt: now,
+          resolvedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+      },
+    } as unknown as ComplaintsRepository;
+    const repository = {
+      async createQuickResponseSession() {
+        sessionWasCreated = true;
+        throw new Error("session should not be created");
+      },
+    } as unknown as QuickResponsesRepository;
+    const ticketsService = {
+      async findTicketById() {
+        return {
+          id: "30000000-0000-4000-8000-000000000001",
+          complaintId: "10000000-0000-4000-8000-000000000001",
+          agentId: "00000000-0000-4000-8000-000000000005",
+          status: "manager_action_done",
+          priority: "medium",
+          heaResponse: "Mohon maaf atas kendala.",
+          heaSentAt: now,
+          closureMessage: null,
+          closureSentAt: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+      },
+      assertCanAccessTicket() {
+        throw Object.assign(new Error("Ticket not found"), {
+          statusCode: 404,
+          code: "TICKET_NOT_FOUND",
+        });
+      },
+    } as unknown as TicketsService;
+    const service = createQuickResponsesService(
+      transactionManager,
+      {} as ComplaintsService,
+      complaintsRepository,
+      repository,
+      ticketsService,
+    );
+
+    await expect(
+      service.saveQuickResponseForComplaint(
+        "10000000-0000-4000-8000-000000000001",
+        {
+          ticketId: "30000000-0000-4000-8000-000000000001",
+          responseTarget: "app_review",
+          finalResponse: null,
+          outcome: "copy_only",
+        },
+        agent,
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 404,
+      code: "TICKET_NOT_FOUND",
+    });
+    expect(sessionWasCreated).toBe(false);
+  });
 });

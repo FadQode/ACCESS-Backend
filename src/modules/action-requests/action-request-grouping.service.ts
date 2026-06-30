@@ -22,7 +22,16 @@ const issueMatchers: Array<{
   {
     issueKey: "payment_failed",
     categories: ["payment"],
-    keywords: ["payment failed", "gagal bayar", "transaksi gagal", "paid"],
+    keywords: [
+      "payment failed",
+      "gagal bayar",
+      "transaksi gagal",
+      "paid",
+      "saldo terpotong",
+      "tiket tidak muncul",
+      "tiket belum muncul",
+      "tiket tidak terbit",
+    ],
     label: "Payment failed after customer was charged",
   },
   {
