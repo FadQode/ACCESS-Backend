@@ -78,6 +78,13 @@ const toListItem = (ticket: TicketJoinedRecord): TicketListItem => ({
   referenceNo: ticket.referenceNo,
   createdAt: iso(ticket.createdAt),
   updatedAt: iso(ticket.updatedAt),
+  managerAction: ticket.actionRequestId
+    ? {
+        actionRequestId: ticket.actionRequestId,
+        actionTaken: ticket.actionTaken,
+        closureMessage: ticket.managerClosureMessage,
+      }
+    : null,
 });
 
 const toDetail = (ticket: TicketJoinedRecord): TicketDetail => ({

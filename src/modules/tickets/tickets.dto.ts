@@ -34,6 +34,14 @@ export const ticketListQuerySchema = t.Object({
 
 const dateTimeSchema = t.String({ format: "date-time" });
 const nullableDateTimeSchema = t.Union([dateTimeSchema, t.Null()]);
+const managerActionSchema = t.Union([
+  t.Object({
+    actionRequestId: t.String({ format: "uuid" }),
+    actionTaken: t.Union([t.String(), t.Null()]),
+    closureMessage: t.Union([t.String(), t.Null()]),
+  }),
+  t.Null(),
+]);
 const ticketListItemSchema = t.Object({
   id: t.String({ format: "uuid" }),
   complaintId: t.String({ format: "uuid" }),
@@ -46,6 +54,7 @@ const ticketListItemSchema = t.Object({
   referenceNo: t.String(),
   createdAt: dateTimeSchema,
   updatedAt: dateTimeSchema,
+  managerAction: managerActionSchema,
 });
 
 export const ticketDetailSchema = t.Composite([

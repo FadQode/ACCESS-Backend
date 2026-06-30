@@ -94,6 +94,9 @@ const ticketRecord = (input: Partial<TicketJoinedRecord> = {}): TicketJoinedReco
   referenceNo: complaint.referenceNo,
   agentName: "Agent A",
   agentEmail: "agent-a@access.test",
+  actionRequestId: null,
+  actionTaken: null,
+  managerClosureMessage: null,
   ...input,
 });
 
@@ -333,6 +336,39 @@ describe("tickets service", () => {
     });
   });
 
+  test("includes manager action guidance in ticket lists", async () => {
+    const ticketsRepository = {
+      async findTickets() {
+        return {
+          items: [
+            ticketRecord({
+              status: "manager_action_done",
+              actionRequestId: "40000000-0000-4000-8000-000000000001",
+              actionTaken: "Refund sudah disetujui manager.",
+              managerClosureMessage:
+                "Sampaikan bahwa refund akan masuk maksimal 1x24 jam.",
+            }),
+          ],
+          total: 1,
+        };
+      },
+    } as unknown as TicketsRepository;
+    const service = createTicketsService(
+      createTransactionManager(),
+      ticketsRepository,
+      {} as ComplaintsRepository,
+      {} as ActionRequestsService,
+    );
+
+    const result = await service.listTickets({}, agentA);
+
+    expect(result.items[0]?.managerAction).toEqual({
+      actionRequestId: "40000000-0000-4000-8000-000000000001",
+      actionTaken: "Refund sudah disetujui manager.",
+      closureMessage: "Sampaikan bahwa refund akan masuk maksimal 1x24 jam.",
+    });
+  });
+
   test("returns not found when an agent opens another agent's ticket detail", async () => {
     const ticketsRepository = {
       async findTicketDetailById() {
@@ -353,6 +389,34 @@ describe("tickets service", () => {
     await expect(service.getTicketDetail(ticket.id, admin)).resolves.toMatchObject({
       id: ticket.id,
       agentId: agentB.id,
+    });
+  });
+
+  test("includes manager action guidance in ticket detail", async () => {
+    const ticketsRepository = {
+      async findTicketDetailById() {
+        return ticketRecord({
+          status: "manager_action_done",
+          actionRequestId: "40000000-0000-4000-8000-000000000001",
+          actionTaken: "Tim operasional sudah memproses kompensasi.",
+          managerClosureMessage:
+            "Minta pelanggan mengecek notifikasi kompensasi di aplikasi.",
+        });
+      },
+    } as unknown as TicketsRepository;
+    const service = createTicketsService(
+      createTransactionManager(),
+      ticketsRepository,
+      {} as ComplaintsRepository,
+      {} as ActionRequestsService,
+    );
+
+    const result = await service.getTicketDetail(ticket.id, agentA);
+
+    expect(result.managerAction).toEqual({
+      actionRequestId: "40000000-0000-4000-8000-000000000001",
+      actionTaken: "Tim operasional sudah memproses kompensasi.",
+      closureMessage: "Minta pelanggan mengecek notifikasi kompensasi di aplikasi.",
     });
   });
 

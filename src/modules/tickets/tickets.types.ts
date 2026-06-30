@@ -38,6 +38,11 @@ export interface TicketListItem {
   referenceNo: string;
   createdAt: string;
   updatedAt: string;
+  managerAction: {
+    actionRequestId: string;
+    actionTaken: string | null;
+    closureMessage: string | null;
+  } | null;
 }
 
 export interface TicketDetail extends TicketListItem {

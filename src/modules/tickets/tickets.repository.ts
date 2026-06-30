@@ -9,7 +9,13 @@ import {
 } from "drizzle-orm";
 
 import type { Database, DatabaseExecutor } from "../../db";
-import { complaints, tickets, users } from "../../db/schema";
+import {
+  actionRequestComplaints,
+  actionRequests,
+  complaints,
+  tickets,
+  users,
+} from "../../db/schema";
 import type { CreateTicketInput, TicketFilters } from "./tickets.types";
 
 export interface TicketJoinedRecord {
@@ -30,6 +36,9 @@ export interface TicketJoinedRecord {
   referenceNo: string;
   agentName: string | null;
   agentEmail: string | null;
+  actionRequestId: string | null;
+  actionTaken: string | null;
+  managerClosureMessage: string | null;
 }
 
 export interface TicketsRepository {
@@ -85,6 +94,9 @@ const ticketJoinSelection = {
   referenceNo: complaints.referenceNo,
   agentName: users.name,
   agentEmail: users.email,
+  actionRequestId: actionRequests.id,
+  actionTaken: actionRequests.actionTaken,
+  managerClosureMessage: actionRequests.closureMessage,
 };
 
 export const createTicketsRepository = (db: Database): TicketsRepository => ({
@@ -129,6 +141,14 @@ export const createTicketsRepository = (db: Database): TicketsRepository => ({
       .from(tickets)
       .innerJoin(complaints, eq(tickets.complaintId, complaints.id))
       .leftJoin(users, eq(tickets.agentId, users.id))
+      .leftJoin(
+        actionRequestComplaints,
+        eq(actionRequestComplaints.ticketId, tickets.id),
+      )
+      .leftJoin(
+        actionRequests,
+        eq(actionRequestComplaints.actionRequestId, actionRequests.id),
+      )
       .where(eq(tickets.id, id))
       .limit(1);
     return ticket ?? null;
@@ -159,6 +179,14 @@ export const createTicketsRepository = (db: Database): TicketsRepository => ({
       .from(tickets)
       .innerJoin(complaints, eq(tickets.complaintId, complaints.id))
       .leftJoin(users, eq(tickets.agentId, users.id))
+      .leftJoin(
+        actionRequestComplaints,
+        eq(actionRequestComplaints.ticketId, tickets.id),
+      )
+      .leftJoin(
+        actionRequests,
+        eq(actionRequestComplaints.actionRequestId, actionRequests.id),
+      )
       .where(where);
 
     const [items, [totalResult]] = await Promise.all([
