@@ -1,6 +1,7 @@
 import {
   index,
   jsonb,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -73,6 +74,12 @@ export const referenceSources = pgTable(
     content: text("content"),
     url: text("url"),
     fileUrl: text("file_url"),
+    storageProvider: varchar("storage_provider", { length: 64 }),
+    storageBucket: varchar("storage_bucket", { length: 255 }),
+    storageKey: text("storage_key"),
+    fileName: varchar("file_name", { length: 255 }),
+    fileMimeType: varchar("file_mime_type", { length: 255 }),
+    fileSize: integer("file_size"),
     status: referenceStatusEnum("status").notNull().default("active"),
     version: varchar("version", { length: 32 }).notNull().default("1.0"),
     searchText: text("search_text"),
@@ -90,6 +97,7 @@ export const referenceSources = pgTable(
     index("reference_sources_category_idx").on(table.category),
     index("reference_sources_status_idx").on(table.status),
     index("reference_sources_title_idx").on(table.title),
+    index("reference_sources_storage_key_idx").on(table.storageKey),
   ],
 );
 

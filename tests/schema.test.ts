@@ -125,6 +125,9 @@ describe("database schema", () => {
         "action_requests_grouping_key_idx",
       ]),
     );
+    expect(
+      configFor(referenceSources).indexes.map((index) => index.config.name),
+    ).toContain("reference_sources_storage_key_idx");
   });
 
   test("enforces expected foreign-key counts", () => {

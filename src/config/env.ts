@@ -39,6 +39,14 @@ export interface AiConfig {
   timeoutMs: number;
 }
 
+export interface SupabaseConfig {
+  referenceBucket: string;
+  referenceMaxFileSizeMb: number;
+  serviceRoleKey?: string;
+  signedUrlExpiresSeconds: number;
+  url?: string;
+}
+
 export interface AppConfig {
   ai: AiConfig;
   appName: string;
@@ -53,6 +61,7 @@ export interface AppConfig {
   openApi: OpenApiConfig;
   port: number;
   redis: RedisConfig;
+  supabase: SupabaseConfig;
 }
 
 type EnvironmentSource = Record<string, string | undefined>;
@@ -342,6 +351,32 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
     redis: {
       enabled: redisEnabled,
       url: redisUrl,
+    },
+    supabase: {
+      ...(source.SUPABASE_URL?.trim()
+        ? { url: source.SUPABASE_URL.trim() }
+        : {}),
+      ...(source.SUPABASE_SERVICE_ROLE_KEY?.trim()
+        ? { serviceRoleKey: source.SUPABASE_SERVICE_ROLE_KEY.trim() }
+        : {}),
+      referenceBucket: readString(
+        source.SUPABASE_REFERENCE_BUCKET,
+        "references_storage",
+      ),
+      signedUrlExpiresSeconds: readInteger(
+        source.SUPABASE_SIGNED_URL_EXPIRES,
+        3600,
+        "SUPABASE_SIGNED_URL_EXPIRES",
+        60,
+        86_400,
+      ),
+      referenceMaxFileSizeMb: readInteger(
+        source.REFERENCE_MAX_FILE_SIZE_MB,
+        5,
+        "REFERENCE_MAX_FILE_SIZE_MB",
+        1,
+        100,
+      ),
     },
   };
 };

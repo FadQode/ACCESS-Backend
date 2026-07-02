@@ -123,6 +123,15 @@ describe("OpenAPI documentation", () => {
       expect(document.paths["/action-requests"]?.get?.security).toEqual([
         { bearerAuth: [] },
       ]);
+      expect(document.paths["/references"]?.get?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
+      expect(document.paths["/references/upload"]?.post?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
+      expect(document.paths["/references/{id}/file-url"]?.get?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
       expect(
         document.paths["/action-requests/{id}/take-action"]?.patch?.security,
       ).toEqual([{ bearerAuth: [] }]);
@@ -132,7 +141,8 @@ describe("OpenAPI documentation", () => {
         ]?.schema?.properties?.response?.properties?.outcome?.enum,
       ).toEqual(["sent_resolved", "sent_hea_action", "copy_only"]);
       expect(document.paths).not.toHaveProperty("/quick-responses/preview");
-      expect(document.paths).not.toHaveProperty("/references");
+      expect(document.paths).not.toHaveProperty("/action-requests/{id}/references");
+      expect(document.paths).not.toHaveProperty("/quick-responses/{id}/references");
       expect(document.paths).not.toHaveProperty("/audit-logs");
       expect(document.paths).not.toHaveProperty("/ticket-events");
       expect(document.components?.securitySchemes).toHaveProperty(

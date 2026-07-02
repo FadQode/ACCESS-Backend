@@ -15,6 +15,10 @@ import { createHealthRoutes } from "./modules/health/health.routes";
 import { createQuickResponseRoutes } from "./modules/quick-responses/quick-responses.routes";
 import { createQuickResponsesRepository } from "./modules/quick-responses/quick-responses.repository";
 import { createQuickResponsesService } from "./modules/quick-responses/quick-responses.service";
+import { createReferenceRoutes } from "./modules/references/references.routes";
+import { createReferencesRepository } from "./modules/references/references.repository";
+import { createReferencesService } from "./modules/references/references.service";
+import { createSupabaseStorageService } from "./integrations/supabase/supabase-storage.service";
 import { createTicketRoutes } from "./modules/tickets/tickets.routes";
 import { createTicketsRepository } from "./modules/tickets/tickets.repository";
 import { createTicketsService } from "./modules/tickets/tickets.service";
@@ -44,6 +48,11 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     createQuickResponsesRepository(db),
     ticketsService,
   );
+  const referencesService = createReferencesService(
+    transactionManager,
+    createReferencesRepository(db),
+    createSupabaseStorageService(config.supabase),
+  );
 
   return new Elysia({ name: "application-routes" })
     .use(createHealthRoutes(config))
@@ -61,6 +70,7 @@ export const createRoutes = (config: AppConfig, db: Database) => {
         quickResponsesService,
       }),
     )
+    .use(createReferenceRoutes(config, { authService, referencesService }))
     .use(createTicketRoutes(config, { authService, ticketsService }))
     .use(
       createActionRequestRoutes(config, {

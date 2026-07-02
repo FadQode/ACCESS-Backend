@@ -18,6 +18,13 @@ describe("loadEnv", () => {
     });
     expect(config.redis.enabled).toBe(false);
     expect(config.ai.enabled).toBe(false);
+    expect(config.supabase).toMatchObject({
+      referenceBucket: "references_storage",
+      referenceMaxFileSizeMb: 5,
+      signedUrlExpiresSeconds: 3600,
+    });
+    expect(config.supabase.url).toBeUndefined();
+    expect(config.supabase.serviceRoleKey).toBeUndefined();
   });
 
   test("rejects an invalid port", () => {
@@ -33,6 +40,10 @@ describe("loadEnv", () => {
       CORS_CREDENTIALS: "false",
       DATABASE_MAX_CONNECTIONS: "20",
       REDIS_ENABLED: "true",
+      REFERENCE_MAX_FILE_SIZE_MB: "8",
+      SUPABASE_REFERENCE_BUCKET: "references_storage",
+      SUPABASE_SIGNED_URL_EXPIRES: "7200",
+      SUPABASE_URL: "https://example.supabase.co",
     });
 
     expect(config.ai.enabled).toBe(true);
@@ -40,6 +51,10 @@ describe("loadEnv", () => {
     expect(config.corsCredentials).toBe(false);
     expect(config.database.maxConnections).toBe(20);
     expect(config.redis.enabled).toBe(true);
+    expect(config.supabase.referenceMaxFileSizeMb).toBe(8);
+    expect(config.supabase.referenceBucket).toBe("references_storage");
+    expect(config.supabase.signedUrlExpiresSeconds).toBe(7200);
+    expect(config.supabase.url).toBe("https://example.supabase.co");
   });
 
   test("requires secure production auth secrets", () => {
