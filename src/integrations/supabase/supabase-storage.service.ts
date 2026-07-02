@@ -13,6 +13,40 @@ const allowedReferenceMimeTypes = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
+const normalizeMimeType = (mimeType: string): string =>
+  mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
+
+const extensionMimeTypes: Record<string, string> = {
+  ".doc": "application/msword",
+  ".docx":
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".pdf": "application/pdf",
+  ".png": "image/png",
+  ".txt": "text/plain",
+};
+
+const getFileExtension = (fileName: string): string => {
+  const sanitized = fileName.trim().toLowerCase();
+  const dotIndex = sanitized.lastIndexOf(".");
+  return dotIndex >= 0 ? sanitized.slice(dotIndex) : "";
+};
+
+const resolveReferenceMimeType = (file: ReferenceUploadFile): string => {
+  const normalized = normalizeMimeType(file.type);
+
+  if (allowedReferenceMimeTypes.has(normalized)) {
+    return normalized;
+  }
+
+  if (normalized && normalized !== "application/octet-stream") {
+    return normalized;
+  }
+
+  return extensionMimeTypes[getFileExtension(file.name)] ?? normalized;
+};
+
 const sanitizeFileName = (fileName: string): string => {
   const normalized = fileName
     .trim()
@@ -83,7 +117,9 @@ export const createSupabaseStorageService = (
         throw new BadRequestError("File is required", "REFERENCE_FILE_REQUIRED");
       }
 
-      if (!allowedReferenceMimeTypes.has(file.type)) {
+      const fileMimeType = resolveReferenceMimeType(file);
+
+      if (!allowedReferenceMimeTypes.has(fileMimeType)) {
         throw new BadRequestError(
           "Unsupported reference file type",
           "REFERENCE_FILE_TYPE_UNSUPPORTED",
@@ -103,7 +139,7 @@ export const createSupabaseStorageService = (
       const { error } = await client.storage
         .from(config.referenceBucket)
         .upload(storageKey, await file.arrayBuffer(), {
-          contentType: file.type,
+          contentType: fileMimeType,
           upsert: false,
         });
 
@@ -120,7 +156,7 @@ export const createSupabaseStorageService = (
         storageBucket: config.referenceBucket,
         storageKey,
         fileName: file.name,
-        fileMimeType: file.type,
+        fileMimeType,
         fileSize: file.size,
       };
     },

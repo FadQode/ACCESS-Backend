@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
 import type { DatabaseTransactionManager } from "../src/db";
-import type { ReferenceUploadFile, SupabaseStorageService } from "../src/integrations/supabase/supabase-storage.service";
+import {
+  createSupabaseStorageService,
+  type ReferenceUploadFile,
+  type SupabaseStorageService,
+} from "../src/integrations/supabase/supabase-storage.service";
+import { ServiceUnavailableError } from "../src/shared/errors";
 import type { AuthUser } from "../src/modules/auth/auth.types";
 import {
   createReferencesService,
@@ -185,6 +190,24 @@ describe("references service", () => {
     expect(receivedStatus).toBe("active");
   });
 
+  test("passes normalized tag filters to the repository", async () => {
+    let receivedTag: string | undefined;
+    const service = createReferencesService(
+      transactionManager,
+      createRepository({
+        async findReferences(filters) {
+          receivedTag = filters.tag;
+          return { items: [activeReference], total: 1 };
+        },
+      }),
+      createStorage(),
+    );
+
+    await service.listReferences({ tag: "Saldo Terpotong" }, manager);
+
+    expect(receivedTag).toBe("saldo_terpotong");
+  });
+
   test("returns 404 when an agent reads an archived reference", async () => {
     const service = createReferencesService(
       transactionManager,
@@ -271,5 +294,136 @@ describe("references service", () => {
       ),
     ).rejects.toThrow("insert failed");
     expect(cleanupKeys).toEqual(["references/2026/07/file.txt"]);
+  });
+
+  test("normalizes and deduplicates tags during reference creation", async () => {
+    const createdTags: string[] = [];
+    const attachedTagIds: string[] = [];
+    const service = createReferencesService(
+      transactionManager,
+      createRepository({
+        async createTag(name: string) {
+          createdTags.push(name);
+          return {
+            id: `tag-${name}`,
+            name,
+            createdAt: now,
+          };
+        },
+        async attachTagsToReference(_referenceId, tagIds) {
+          attachedTagIds.push(...tagIds);
+        },
+      }),
+      createStorage(),
+    );
+
+    await service.createReference(
+      {
+        sourceType: "sop",
+        title: "SOP Payment",
+        content: "Payment handling",
+        tags: ["Saldo Terpotong", "saldo_terpotong", " Payment Failed "],
+      },
+      manager,
+    );
+
+    expect(createdTags).toEqual(["saldo_terpotong", "payment_failed"]);
+    expect(attachedTagIds).toEqual([
+      "tag-saldo_terpotong",
+      "tag-payment_failed",
+    ]);
+  });
+
+  test("rejects agent reference management actions", async () => {
+    const service = createReferencesService(
+      transactionManager,
+      createRepository(),
+      createStorage(),
+    );
+
+    await expect(
+      service.createReference(
+        {
+          sourceType: "sop",
+          title: "Agent SOP",
+          content: "Not allowed",
+        },
+        agent,
+      ),
+    ).rejects.toThrow("Only managers can manage references");
+    await expect(
+      service.updateReference(activeReference.id, { title: "Blocked" }, agent),
+    ).rejects.toThrow("Only managers can manage references");
+    await expect(
+      service.archiveReference(activeReference.id, agent),
+    ).rejects.toThrow("Only managers can manage references");
+    await expect(
+      service.uploadReference(
+        { title: "Blocked upload" },
+        createFile(),
+        agent,
+      ),
+    ).rejects.toThrow("Only managers can manage references");
+  });
+});
+
+describe("supabase storage service", () => {
+  test("returns 503 when storage env is missing", async () => {
+    const storage = createSupabaseStorageService({
+      referenceBucket: "references_storage",
+      referenceMaxFileSizeMb: 5,
+      signedUrlExpiresSeconds: 3600,
+    });
+
+    await expect(
+      storage.createReferenceSignedUrl("references/test.txt"),
+    ).rejects.toBeInstanceOf(ServiceUnavailableError);
+    await expect(storage.uploadReferenceFile(createFile())).rejects.toThrow(
+      "Storage is not configured",
+    );
+  });
+
+  test("accepts txt uploads when clients send octet-stream or empty mime types", async () => {
+    const uploadedContentTypes: string[] = [];
+    const storage = createSupabaseStorageService(
+      {
+        referenceBucket: "references_storage",
+        referenceMaxFileSizeMb: 5,
+        serviceRoleKey: "service-role",
+        signedUrlExpiresSeconds: 3600,
+        url: "https://example.supabase.co",
+      },
+      () =>
+        ({
+          storage: {
+            from() {
+              return {
+                async upload(
+                  _storageKey: string,
+                  _body: ArrayBuffer,
+                  options: { contentType: string },
+                ) {
+                  uploadedContentTypes.push(options.contentType);
+                  return { error: null };
+                },
+              };
+            },
+          },
+        }) as never,
+    );
+
+    await expect(
+      storage.uploadReferenceFile({
+        ...createFile(),
+        type: "application/octet-stream",
+      }),
+    ).resolves.toMatchObject({ fileMimeType: "text/plain" });
+    await expect(
+      storage.uploadReferenceFile({
+        ...createFile(),
+        type: "",
+      }),
+    ).resolves.toMatchObject({ fileMimeType: "text/plain" });
+    expect(uploadedContentTypes).toEqual(["text/plain", "text/plain"]);
   });
 });
