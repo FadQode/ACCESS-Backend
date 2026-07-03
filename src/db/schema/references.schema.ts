@@ -8,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar,
@@ -46,6 +47,17 @@ export const quickResponseReferenceUsageEnum = pgEnum(
     "known_issue",
     "previous_resolution",
     "action_closure",
+    "closure_support",
+  ],
+);
+
+export const quickResponseReferenceSelectionSourceEnum = pgEnum(
+  "quick_response_reference_selection_source",
+  [
+    "agent_selected",
+    "manager_attached",
+    "system_suggested",
+    "auto_attached",
   ],
 );
 
@@ -147,6 +159,11 @@ export const quickResponseReferences = pgTable(
     referencedBy: uuid("referenced_by")
       .notNull()
       .references(() => users.id),
+    selectionSource: quickResponseReferenceSelectionSourceEnum(
+      "selection_source",
+    )
+      .notNull()
+      .default("agent_selected"),
     usageType: quickResponseReferenceUsageEnum("usage_type").notNull(),
     relevanceScore: numeric("relevance_score", { precision: 6, scale: 4 }),
     snapshotText: text("snapshot_text"),
@@ -165,7 +182,14 @@ export const quickResponseReferences = pgTable(
     index("quick_response_references_referenced_by_idx").on(
       table.referencedBy,
     ),
+    index("quick_response_references_selection_source_idx").on(
+      table.selectionSource,
+    ),
     index("quick_response_references_usage_type_idx").on(table.usageType),
+    unique("quick_response_references_session_source_unique").on(
+      table.quickResponseSessionId,
+      table.referenceSourceId,
+    ),
   ],
 );
 
@@ -198,6 +222,10 @@ export const actionRequestReferences = pgTable(
     ),
     index("action_request_references_attached_by_idx").on(table.attachedBy),
     index("action_request_references_usage_type_idx").on(table.usageType),
+    unique("action_request_references_request_source_unique").on(
+      table.actionRequestId,
+      table.referenceSourceId,
+    ),
   ],
 );
 

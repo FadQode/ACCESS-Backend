@@ -1,6 +1,10 @@
 import { t } from "elysia";
 
-import { complaintCategorySchema, complaintStatusSchema } from "../complaints/complaints.dto";
+import { actionRequestReferenceItemSchema } from "../action-requests/action-requests.dto";
+import {
+  complaintCategorySchema,
+  complaintStatusSchema,
+} from "../complaints/complaints.dto";
 
 export const ticketStatusSchema = t.Union([
   t.Literal("open"),
@@ -115,5 +119,33 @@ export const ticketEscalationResponseSchema = t.Object({
       updatedAt: dateTimeSchema,
     }),
     actionRequestReused: t.Boolean(),
+  }),
+});
+
+export const ticketClosureContextResponseSchema = t.Object({
+  success: t.Literal(true),
+  message: t.String(),
+  data: t.Object({
+    ticket: t.Object({
+      id: t.String({ format: "uuid" }),
+      status: ticketStatusSchema,
+      priority: ticketPrioritySchema,
+    }),
+    complaint: t.Object({
+      id: t.String({ format: "uuid" }),
+      referenceNo: t.String(),
+      category: complaintCategorySchema,
+      complaintText: t.String(),
+      status: complaintStatusSchema,
+    }),
+    actionRequest: t.Object({
+      id: t.String({ format: "uuid" }),
+      referenceNo: t.String(),
+      clusterLabel: t.Union([t.String(), t.Null()]),
+      actionTaken: t.Union([t.String(), t.Null()]),
+      closureMessage: t.Union([t.String(), t.Null()]),
+      status: t.String(),
+    }),
+    attachedReferences: t.Array(actionRequestReferenceItemSchema),
   }),
 });

@@ -11,8 +11,10 @@ import type { ComplaintsRepository } from "../complaints/complaints.repository";
 import type { ComplaintsService } from "../complaints/complaints.service";
 import type { ComplaintStatus } from "../complaints/complaints.types";
 import type { TicketsService } from "../tickets/tickets.service";
+import type { QuickResponseReferencesService } from "./quick-response-references.service";
 import type { QuickResponsesRepository } from "./quick-responses.repository";
 import type {
+  SaveComplaintQuickResponseInput,
   SaveQuickResponseInput,
   StableQuickResponseOutcome,
 } from "./quick-responses.types";
@@ -77,7 +79,7 @@ export interface QuickResponsesService {
   }>;
   saveQuickResponseForComplaint(
     complaintId: string,
-    input: SaveQuickResponseInput["response"] & { ticketId?: string | null },
+    input: SaveComplaintQuickResponseInput,
     currentUser: AuthUser,
   ): Promise<{
     quickResponseSession: {
@@ -104,6 +106,12 @@ export const createQuickResponsesService = (
   complaintsRepository: ComplaintsRepository,
   repository: QuickResponsesRepository,
   ticketsService: TicketsService,
+  quickResponseReferencesService: QuickResponseReferencesService = {
+    async buildReferenceUsageRows() {
+      return [];
+    },
+    async createReferenceUsage() {},
+  },
 ): QuickResponsesService => ({
   async saveQuickResponse(input, currentUser) {
     assertCanSaveQuickResponse(currentUser);
@@ -212,6 +220,21 @@ export const createQuickResponsesService = (
         ticketsService.assertCanAccessTicket(ticket, currentUser);
       }
 
+      const requestedReferences = input.references ?? [];
+      const closureContext =
+        requestedReferences.length > 0
+          ? input.ticketId
+            ? await ticketsService.getClosureContext(input.ticketId, currentUser)
+            : null
+          : null;
+
+      if (requestedReferences.length > 0 && !closureContext) {
+        throw new BadRequestError(
+          "Ticket is required when saving quick response references",
+          "QUICK_RESPONSE_REFERENCE_TICKET_REQUIRED",
+        );
+      }
+
       if (input.outcome === "sent_resolved" && ticket) {
         if (ticket.status === "waiting_manager_action") {
           throw new BadRequestError(
@@ -263,6 +286,21 @@ export const createQuickResponsesService = (
         },
         executor,
       );
+
+      if (requestedReferences.length > 0 && closureContext) {
+        const referenceRows =
+          await quickResponseReferencesService.buildReferenceUsageRows({
+            actionRequestId: closureContext.actionRequest.id,
+            currentUser,
+            quickResponseSessionId: session.id,
+            references: requestedReferences,
+          });
+        await quickResponseReferencesService.createReferenceUsage(
+          referenceRows,
+          executor,
+        );
+      }
+
       const closedTicket = ticket
         ? await ticketsService.findTicketById(ticket.id, executor)
         : null;

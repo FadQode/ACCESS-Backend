@@ -4,12 +4,19 @@ import {
   desc,
   eq,
   ilike,
+  inArray,
   or,
   type SQL,
 } from "drizzle-orm";
 
 import type { Database, DatabaseExecutor } from "../../db";
-import { complaints, quickResponseSessions, users } from "../../db/schema";
+import {
+  complaints,
+  quickResponseReferences,
+  quickResponseSessions,
+  referenceSources,
+  users,
+} from "../../db/schema";
 import type {
   ComplaintFilters,
   CreateComplaintInput,
@@ -49,6 +56,22 @@ export interface ComplaintsRepository {
       selectedTakeAction: string | null;
       finalResponse: string | null;
       outcome: typeof quickResponseSessions.$inferSelect.outcome;
+      references: Array<{
+        id: string;
+        referenceSourceId: string;
+        selectionSource: typeof quickResponseReferences.$inferSelect.selectionSource;
+        usageType: typeof quickResponseReferences.$inferSelect.usageType;
+        snapshotText: string | null;
+        note: string | null;
+        createdAt: Date;
+        referenceSource: {
+          id: string;
+          title: string;
+          sourceType: typeof referenceSources.$inferSelect.sourceType;
+          category: typeof referenceSources.$inferSelect.category;
+          status: typeof referenceSources.$inferSelect.status;
+        };
+      }>;
       createdAt: Date;
       updatedAt: Date;
     }>;
@@ -167,7 +190,59 @@ export const createComplaintsRepository = (
       .where(eq(quickResponseSessions.complaintId, id))
       .orderBy(desc(quickResponseSessions.createdAt));
 
-    return { complaint, quickResponseSessions: sessions };
+    const referenceRows =
+      sessions.length > 0
+        ? await db
+            .select({
+              id: quickResponseReferences.id,
+              quickResponseSessionId:
+                quickResponseReferences.quickResponseSessionId,
+              referenceSourceId: quickResponseReferences.referenceSourceId,
+              selectionSource: quickResponseReferences.selectionSource,
+              usageType: quickResponseReferences.usageType,
+              snapshotText: quickResponseReferences.snapshotText,
+              note: quickResponseReferences.note,
+              createdAt: quickResponseReferences.createdAt,
+              referenceSource: {
+                id: referenceSources.id,
+                title: referenceSources.title,
+                sourceType: referenceSources.sourceType,
+                category: referenceSources.category,
+                status: referenceSources.status,
+              },
+            })
+            .from(quickResponseReferences)
+            .innerJoin(
+              referenceSources,
+              eq(quickResponseReferences.referenceSourceId, referenceSources.id),
+            )
+            .where(
+              inArray(
+                quickResponseReferences.quickResponseSessionId,
+                sessions.map((session) => session.id),
+              ),
+            )
+            .orderBy(desc(quickResponseReferences.createdAt))
+        : [];
+
+    const referencesBySession = new Map<
+      string,
+      Array<(typeof referenceRows)[number]>
+    >();
+    for (const reference of referenceRows) {
+      const references =
+        referencesBySession.get(reference.quickResponseSessionId) ?? [];
+      references.push(reference);
+      referencesBySession.set(reference.quickResponseSessionId, references);
+    }
+
+    return {
+      complaint,
+      quickResponseSessions: sessions.map((session) => ({
+        ...session,
+        references: referencesBySession.get(session.id) ?? [],
+      })),
+    };
   },
 
   async isReferenceNoInUse(referenceNo, executor = db) {

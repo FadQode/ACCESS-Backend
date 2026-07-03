@@ -10,6 +10,7 @@ import { apiErrorResponseSchema } from "../../shared/http/schema";
 import type { AuthService } from "../auth/auth.service";
 import type { TicketsService } from "./tickets.service";
 import {
+  ticketClosureContextResponseSchema,
   ticketDetailResponseSchema,
   ticketEscalationResponseSchema,
   ticketListQuerySchema,
@@ -53,6 +54,33 @@ export const createTicketRoutes = (
         detail: {
           tags: ["Tickets"],
           summary: "List tickets",
+          security: [{ bearerAuth: [] }],
+        },
+      },
+    )
+    .get(
+      "/:id/closure-context",
+      async ({ accessToken, headers, params }) => {
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        const result = await ticketsService.getClosureContext(
+          params.id,
+          currentUser,
+        );
+        return successResponse(result, "Ticket closure context retrieved");
+      },
+      {
+        params: ticketParamsSchema,
+        response: {
+          200: ticketClosureContextResponseSchema,
+          ...protectedErrors,
+        },
+        detail: {
+          tags: ["Tickets"],
+          summary: "Get ticket closure context",
           security: [{ bearerAuth: [] }],
         },
       },

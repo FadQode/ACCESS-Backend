@@ -27,8 +27,58 @@ export const takeActionBodySchema = t.Object({
   closureMessage: t.String({ minLength: 1 }),
 });
 
+export const actionRequestReferenceUsageSchema = t.Union([
+  t.Literal("evidence"),
+  t.Literal("action_basis"),
+  t.Literal("policy_support"),
+  t.Literal("closure_support"),
+  t.Literal("related_link"),
+  t.Literal("internal_note"),
+]);
+
+export const actionRequestReferenceParamsSchema = t.Object({
+  id: t.String({ format: "uuid" }),
+  referenceLinkId: t.String({ format: "uuid" }),
+});
+
+export const attachActionRequestReferenceBodySchema = t.Object({
+  referenceSourceId: t.String({ format: "uuid" }),
+  usageType: actionRequestReferenceUsageSchema,
+  note: t.Optional(t.Union([t.String(), t.Null()])),
+});
+
 const dateTimeSchema = t.String({ format: "date-time" });
 const nullableDateTimeSchema = t.Union([dateTimeSchema, t.Null()]);
+export const actionRequestReferenceItemSchema = t.Object({
+  id: t.String({ format: "uuid" }),
+  actionRequestId: t.String({ format: "uuid" }),
+  referenceSourceId: t.String({ format: "uuid" }),
+  usageType: actionRequestReferenceUsageSchema,
+  snapshotText: t.Union([t.String(), t.Null()]),
+  note: t.Union([t.String(), t.Null()]),
+  createdAt: dateTimeSchema,
+  attachedBy: t.Object({
+    id: t.String({ format: "uuid" }),
+    name: t.String(),
+    email: t.String({ format: "email" }),
+  }),
+  referenceSource: t.Object({
+    id: t.String({ format: "uuid" }),
+    title: t.String(),
+    sourceType: t.String(),
+    category: t.Union([complaintCategorySchema, t.Null()]),
+    content: t.Union([t.String(), t.Null()]),
+    url: t.Union([t.String(), t.Null()]),
+    fileUrl: t.Union([t.String(), t.Null()]),
+    storageProvider: t.Union([t.String(), t.Null()]),
+    storageKey: t.Union([t.String(), t.Null()]),
+    fileName: t.Union([t.String(), t.Null()]),
+    fileMimeType: t.Union([t.String(), t.Null()]),
+    fileSize: t.Union([t.Number(), t.Null()]),
+    status: t.String(),
+  }),
+});
+
 const actionRequestListItemSchema = t.Object({
   id: t.String({ format: "uuid" }),
   referenceNo: t.String(),
@@ -61,6 +111,7 @@ export const actionRequestDetailSchema = t.Composite([
         ticketStatus: t.Union([t.String(), t.Null()]),
       }),
     ),
+    references: t.Array(actionRequestReferenceItemSchema),
   }),
 ]);
 
@@ -90,5 +141,29 @@ export const takeActionResponseSchema = t.Object({
   data: t.Object({
     actionRequest: actionRequestDetailSchema,
     updatedTickets: t.Number(),
+  }),
+});
+
+export const actionRequestReferencesResponseSchema = t.Object({
+  success: t.Literal(true),
+  message: t.String(),
+  data: t.Object({
+    references: t.Array(actionRequestReferenceItemSchema),
+  }),
+});
+
+export const actionRequestReferenceMutationResponseSchema = t.Object({
+  success: t.Literal(true),
+  message: t.String(),
+  data: t.Object({
+    reference: actionRequestReferenceItemSchema,
+  }),
+});
+
+export const actionRequestReferenceDeleteResponseSchema = t.Object({
+  success: t.Literal(true),
+  message: t.String(),
+  data: t.Object({
+    deleted: t.Boolean(),
   }),
 });

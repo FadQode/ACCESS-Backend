@@ -1,4 +1,5 @@
 import type { QuickResponseSession } from "../../db/schema";
+import type { QuickResponseReferenceUsageInput } from "./quick-response-references.service";
 import type {
   ComplaintCategory,
   ComplaintSource,
@@ -31,6 +32,11 @@ export interface SaveQuickResponseInput {
     outcome: StableQuickResponseOutcome;
   };
 }
+
+export type SaveComplaintQuickResponseInput = SaveQuickResponseInput["response"] & {
+  references?: QuickResponseReferenceUsageInput[];
+  ticketId?: string | null;
+};
 
 export interface CreateQuickResponseSessionInput {
   agentId: string;

@@ -7,10 +7,15 @@ import {
 } from "../../shared/errors";
 import { normalizeText } from "../../shared/utils/normalize-text";
 import type { ActionRequestsService } from "../action-requests/action-requests.service";
+import {
+  toActionRequestReferenceItem,
+} from "../action-requests/action-request-references.service";
+import type { ActionRequestReferencesRepository } from "../action-requests/action-request-references.repository";
 import type { AuthUser } from "../auth/auth.types";
 import type { ComplaintsRepository } from "../complaints/complaints.repository";
 import type {
   TicketDetail,
+  TicketClosureContext,
   TicketFilters,
   TicketListItem,
 } from "./tickets.types";
@@ -126,6 +131,10 @@ export interface TicketsService {
     };
   }>;
   getTicketDetail(id: string, currentUser: AuthUser): Promise<TicketDetail>;
+  getClosureContext(
+    id: string,
+    currentUser: AuthUser,
+  ): Promise<TicketClosureContext>;
   escalateTicket(
     id: string,
     currentUser: AuthUser,
@@ -154,6 +163,23 @@ export const createTicketsService = (
   ticketsRepository: TicketsRepository,
   complaintsRepository: ComplaintsRepository,
   actionRequestsService: ActionRequestsService,
+  actionRequestReferencesRepository: ActionRequestReferencesRepository = {
+    async createActionRequestReference() {
+      throw new Error("Action request reference repository is not configured");
+    },
+    async deleteActionRequestReference() {
+      return null;
+    },
+    async findActionRequestReferenceById() {
+      return null;
+    },
+    async findActionRequestReferenceBySource() {
+      return null;
+    },
+    async findActionRequestReferences() {
+      return [];
+    },
+  },
 ): TicketsService => ({
   async createTicketFromComplaint(input, executor) {
     const existing = await ticketsRepository.findTicketByComplaintId(
@@ -229,6 +255,73 @@ export const createTicketsService = (
     assertAgentOwnsTicket(ticket, currentUser);
 
     return toDetail(ticket);
+  },
+
+  async getClosureContext(id, currentUser) {
+    if (currentUser.role !== "agent" && currentUser.role !== "admin") {
+      throw new ForbiddenError(
+        "Only agents can access ticket closure context",
+        "TICKET_CLOSURE_CONTEXT_FORBIDDEN",
+      );
+    }
+
+    const context = await ticketsRepository.findTicketClosureContextById(id);
+
+    if (!context) {
+      throw new NotFoundError("Ticket not found", "TICKET_NOT_FOUND");
+    }
+
+    assertAgentOwnsTicket({ agentId: context.ticketAgentId }, currentUser);
+
+    if (context.ticketStatus !== "manager_action_done") {
+      throw new BadRequestError(
+        "Manager action has not been completed yet",
+        "MANAGER_ACTION_NOT_COMPLETED",
+      );
+    }
+
+    if (!context.actionRequestId) {
+      throw new BadRequestError(
+        "Ticket is not linked to an action request",
+        "TICKET_ACTION_REQUEST_NOT_LINKED",
+      );
+    }
+
+    if (context.actionRequestStatus !== "action_taken") {
+      throw new BadRequestError(
+        "Manager action has not been completed yet",
+        "MANAGER_ACTION_NOT_COMPLETED",
+      );
+    }
+
+    const attachedReferences =
+      await actionRequestReferencesRepository.findActionRequestReferences(
+        context.actionRequestId,
+      );
+
+    return {
+      ticket: {
+        id: context.ticketId,
+        status: context.ticketStatus,
+        priority: context.ticketPriority,
+      },
+      complaint: {
+        id: context.complaintId,
+        referenceNo: context.complaintReferenceNo,
+        category: context.complaintCategory,
+        complaintText: context.complaintText,
+        status: context.complaintStatus,
+      },
+      actionRequest: {
+        id: context.actionRequestId,
+        referenceNo: context.actionRequestReferenceNo ?? "",
+        clusterLabel: context.actionRequestClusterLabel,
+        actionTaken: context.actionRequestActionTaken,
+        closureMessage: context.actionRequestClosureMessage,
+        status: context.actionRequestStatus,
+      },
+      attachedReferences: attachedReferences.map(toActionRequestReferenceItem),
+    };
   },
 
   async escalateTicket(id, currentUser) {

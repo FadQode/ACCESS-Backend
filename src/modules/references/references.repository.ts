@@ -77,7 +77,10 @@ export interface ReferencesRepository {
     name: string,
     executor?: DatabaseExecutor,
   ): Promise<ReferenceTagRecord>;
-  findReferenceById(id: string): Promise<ReferenceSourceWithTags | null>;
+  findReferenceById(
+    id: string,
+    executor?: DatabaseExecutor,
+  ): Promise<ReferenceSourceWithTags | null>;
   findReferences(
     filters: Required<Pick<ReferenceFilters, "page" | "limit">> &
       ReferenceFilters,
@@ -176,16 +179,20 @@ export const createReferencesRepository = (
       return tag;
     },
 
-    async findReferenceById(id) {
-      const [reference] = await db
+    async findReferenceById(id, executor = db) {
+      const [reference] = await executor
         .select()
         .from(referenceSources)
         .where(eq(referenceSources.id, id))
         .limit(1);
 
       if (!reference) return null;
-      const [hydrated] = await hydrateTags([reference]);
-      return hydrated ?? null;
+      if (executor === db) {
+        const [hydrated] = await hydrateTags([reference]);
+        return hydrated ?? null;
+      }
+
+      return { ...reference, tags: [] };
     },
 
     async findReferences(filters) {

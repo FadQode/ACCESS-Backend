@@ -78,6 +78,22 @@ export interface ComplaintQuickResponseDetail {
     | "saved_ticket"
     | "escalated"
     | "copy_only";
+  references: Array<{
+    id: string;
+    referenceSourceId: string;
+    selectionSource: string;
+    usageType: string;
+    snapshotText: string | null;
+    note: string | null;
+    createdAt: string;
+    referenceSource: {
+      id: string;
+      title: string;
+      sourceType: string;
+      category: ComplaintCategory | null;
+      status: string;
+    };
+  }>;
   createdAt: string;
   updatedAt: string;
 }

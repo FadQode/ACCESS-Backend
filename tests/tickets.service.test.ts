@@ -9,6 +9,7 @@ import type {
   DatabaseTransactionManager,
 } from "../src/db";
 import type { ActionRequestsService } from "../src/modules/action-requests/action-requests.service";
+import type { ActionRequestReferencesRepository } from "../src/modules/action-requests/action-request-references.repository";
 import type { AuthUser } from "../src/modules/auth/auth.types";
 import type { ComplaintsRepository } from "../src/modules/complaints/complaints.repository";
 import { createTicketsService } from "../src/modules/tickets/tickets.service";
@@ -99,6 +100,58 @@ const ticketRecord = (input: Partial<TicketJoinedRecord> = {}): TicketJoinedReco
   managerClosureMessage: null,
   ...input,
 });
+
+const closureContextRecord = (
+  input: Partial<
+    Awaited<ReturnType<TicketsRepository["findTicketClosureContextById"]>>
+  > = {},
+) => ({
+  ticketId: ticket.id,
+  ticketAgentId: ticket.agentId,
+  ticketStatus: "manager_action_done" as const,
+  ticketPriority: "medium" as const,
+  complaintId: complaint.id,
+  complaintReferenceNo: complaint.referenceNo,
+  complaintCategory: complaint.category,
+  complaintText: complaint.complaintText,
+  complaintStatus: complaint.status,
+  actionRequestId: "40000000-0000-4000-8000-000000000001",
+  actionRequestReferenceNo: "AR-2026-TEST",
+  actionRequestClusterLabel: "Payment failed after customer was charged",
+  actionRequestActionTaken: "Refund sudah disetujui manager.",
+  actionRequestClosureMessage:
+    "Sampaikan bahwa refund akan masuk maksimal 1x24 jam.",
+  actionRequestStatus: "action_taken" as const,
+  ...input,
+});
+
+const actionRequestReferenceLink = {
+  id: "60000000-0000-4000-8000-000000000001",
+  actionRequestId: "40000000-0000-4000-8000-000000000001",
+  referenceSourceId: "50000000-0000-4000-8000-000000000001",
+  attachedBy: manager.id,
+  attachedByEmail: manager.email,
+  attachedByName: manager.name,
+  usageType: "closure_support",
+  snapshotText: "SOP Refund - Refund saldo terpotong.",
+  note: null,
+  createdAt: now,
+  referenceSource: {
+    id: "50000000-0000-4000-8000-000000000001",
+    title: "SOP Refund",
+    sourceType: "sop",
+    category: "payment",
+    content: "Refund saldo terpotong.",
+    url: null,
+    fileUrl: null,
+    storageProvider: null,
+    storageKey: null,
+    fileName: null,
+    fileMimeType: null,
+    fileSize: null,
+    status: "active",
+  },
+} as const;
 
 const createTransactionManager = (): DatabaseTransactionManager => ({
   async transaction(callback) {
@@ -417,6 +470,104 @@ describe("tickets service", () => {
       actionRequestId: "40000000-0000-4000-8000-000000000001",
       actionTaken: "Tim operasional sudah memproses kompensasi.",
       closureMessage: "Minta pelanggan mengecek notifikasi kompensasi di aplikasi.",
+    });
+  });
+
+  test("returns closure context with manager-attached references for agents", async () => {
+    const ticketsRepository = {
+      async findTicketClosureContextById() {
+        return closureContextRecord();
+      },
+    } as unknown as TicketsRepository;
+    const actionRequestReferencesRepository = {
+      async findActionRequestReferences(actionRequestId: string) {
+        expect(actionRequestId).toBe(actionRequestReferenceLink.actionRequestId);
+        return [actionRequestReferenceLink];
+      },
+    } as unknown as ActionRequestReferencesRepository;
+    const service = createTicketsService(
+      createTransactionManager(),
+      ticketsRepository,
+      {} as ComplaintsRepository,
+      {} as ActionRequestsService,
+      actionRequestReferencesRepository,
+    );
+
+    const result = await service.getClosureContext(ticket.id, agentA);
+
+    expect(result.ticket).toMatchObject({
+      id: ticket.id,
+      status: "manager_action_done",
+    });
+    expect(result.actionRequest).toMatchObject({
+      id: actionRequestReferenceLink.actionRequestId,
+      status: "action_taken",
+    });
+    expect(result.attachedReferences).toHaveLength(1);
+    expect(result.attachedReferences[0]).toMatchObject({
+      id: actionRequestReferenceLink.id,
+      usageType: "closure_support",
+      referenceSource: {
+        id: actionRequestReferenceLink.referenceSourceId,
+        title: "SOP Refund",
+      },
+    });
+  });
+
+  test("guards closure context by role, ownership, and ready statuses", async () => {
+    const readyRepository = {
+      async findTicketClosureContextById() {
+        return closureContextRecord();
+      },
+    } as unknown as TicketsRepository;
+    const service = createTicketsService(
+      createTransactionManager(),
+      readyRepository,
+      {} as ComplaintsRepository,
+      {} as ActionRequestsService,
+    );
+
+    await expect(service.getClosureContext(ticket.id, manager)).rejects.toMatchObject({
+      statusCode: 403,
+      code: "TICKET_CLOSURE_CONTEXT_FORBIDDEN",
+    });
+    await expect(service.getClosureContext(ticket.id, agentB)).rejects.toMatchObject({
+      statusCode: 404,
+      code: "TICKET_NOT_FOUND",
+    });
+
+    const pendingTicketService = createTicketsService(
+      createTransactionManager(),
+      {
+        async findTicketClosureContextById() {
+          return closureContextRecord({ ticketStatus: "hea_sent" });
+        },
+      } as unknown as TicketsRepository,
+      {} as ComplaintsRepository,
+      {} as ActionRequestsService,
+    );
+    await expect(
+      pendingTicketService.getClosureContext(ticket.id, agentA),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "MANAGER_ACTION_NOT_COMPLETED",
+    });
+
+    const pendingActionService = createTicketsService(
+      createTransactionManager(),
+      {
+        async findTicketClosureContextById() {
+          return closureContextRecord({ actionRequestStatus: "reviewing" });
+        },
+      } as unknown as TicketsRepository,
+      {} as ComplaintsRepository,
+      {} as ActionRequestsService,
+    );
+    await expect(
+      pendingActionService.getClosureContext(ticket.id, agentA),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "MANAGER_ACTION_NOT_COMPLETED",
     });
   });
 

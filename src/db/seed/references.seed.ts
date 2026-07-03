@@ -236,6 +236,7 @@ export const quickResponseReferenceSeedData = [
     quickResponseSessionId: "00000000-0000-4000-8003-000000000001",
     referenceSourceId: "00000000-0000-4000-8006-000000000005",
     referencedBy: "00000000-0000-4000-8000-000000000004",
+    selectionSource: "agent_selected",
     usageType: "known_issue",
     relevanceScore: "0.9100",
     snapshotText:
@@ -247,6 +248,7 @@ export const quickResponseReferenceSeedData = [
     quickResponseSessionId: "00000000-0000-4000-8003-000000000004",
     referenceSourceId: "00000000-0000-4000-8006-000000000006",
     referencedBy: "00000000-0000-4000-8000-000000000004",
+    selectionSource: "agent_selected",
     usageType: "response_basis",
     relevanceScore: "0.8800",
     snapshotText:
@@ -257,6 +259,7 @@ export const quickResponseReferenceSeedData = [
     quickResponseSessionId: "00000000-0000-4000-8003-000000000005",
     referenceSourceId: "00000000-0000-4000-8006-000000000004",
     referencedBy: "00000000-0000-4000-8000-000000000007",
+    selectionSource: "agent_selected",
     usageType: "template_used",
     relevanceScore: "0.8300",
     snapshotText:
@@ -267,6 +270,7 @@ export const quickResponseReferenceSeedData = [
     quickResponseSessionId: "00000000-0000-4000-8003-000000000006",
     referenceSourceId: "00000000-0000-4000-8006-000000000001",
     referencedBy: "00000000-0000-4000-8000-000000000005",
+    selectionSource: "agent_selected",
     usageType: "policy_support",
     relevanceScore: "0.8600",
     snapshotText:
@@ -277,6 +281,7 @@ export const quickResponseReferenceSeedData = [
     quickResponseSessionId: "00000000-0000-4000-8003-000000000007",
     referenceSourceId: "00000000-0000-4000-8006-000000000011",
     referencedBy: "00000000-0000-4000-8000-000000000008",
+    selectionSource: "manager_attached",
     usageType: "action_closure",
     relevanceScore: "0.7600",
     snapshotText:
@@ -385,6 +390,7 @@ export const seedReferences = async (db: Database): Promise<number> => {
         quickResponseSessionId: sql`excluded.quick_response_session_id`,
         referenceSourceId: sql`excluded.reference_source_id`,
         referencedBy: sql`excluded.referenced_by`,
+        selectionSource: sql`excluded.selection_source`,
         usageType: sql`excluded.usage_type`,
         relevanceScore: sql`excluded.relevance_score`,
         snapshotText: sql`excluded.snapshot_text`,

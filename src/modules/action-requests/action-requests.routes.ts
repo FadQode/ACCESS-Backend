@@ -12,14 +12,21 @@ import {
   actionRequestDetailResponseSchema,
   actionRequestListQuerySchema,
   actionRequestListResponseSchema,
+  actionRequestReferenceDeleteResponseSchema,
+  actionRequestReferenceMutationResponseSchema,
+  actionRequestReferenceParamsSchema,
+  actionRequestReferencesResponseSchema,
+  attachActionRequestReferenceBodySchema,
   actionRequestParamsSchema,
   takeActionBodySchema,
   takeActionResponseSchema,
 } from "./action-requests.dto";
+import type { ActionRequestReferencesService } from "./action-request-references.service";
 import type { ActionRequestsService } from "./action-requests.service";
 
 export interface ActionRequestRoutesDependencies {
   authService: AuthService;
+  actionRequestReferencesService: ActionRequestReferencesService;
   actionRequestsService: ActionRequestsService;
 }
 
@@ -33,7 +40,11 @@ const protectedErrors = {
 
 export const createActionRequestRoutes = (
   config: AppConfig,
-  { authService, actionRequestsService }: ActionRequestRoutesDependencies,
+  {
+    authService,
+    actionRequestReferencesService,
+    actionRequestsService,
+  }: ActionRequestRoutesDependencies,
 ) =>
   new Elysia({ name: "action-request-routes", prefix: "/action-requests" })
     .use(createAccessTokenPlugin(config))
@@ -65,28 +76,93 @@ export const createActionRequestRoutes = (
       },
     )
     .get(
-      "/:id",
+      "/:id/references",
       async ({ accessToken, headers, params }) => {
         const currentUser = await requireAuth(
           headers.authorization,
           accessToken,
           authService,
         );
-        const actionRequest = await actionRequestsService.getActionRequestDetail(
+        const references = await actionRequestReferencesService.listReferences(
           params.id,
           currentUser,
         );
-        return successResponse({ actionRequest }, "Action request retrieved");
+        return successResponse(
+          { references },
+          "Action request references retrieved",
+        );
       },
       {
         params: actionRequestParamsSchema,
         response: {
-          200: actionRequestDetailResponseSchema,
+          200: actionRequestReferencesResponseSchema,
           ...protectedErrors,
         },
         detail: {
           tags: ["Action Requests"],
-          summary: "Get grouped action request detail",
+          summary: "List references attached to an action request",
+          security: [{ bearerAuth: [] }],
+        },
+      },
+    )
+    .post(
+      "/:id/references",
+      async ({ accessToken, body, headers, params, set }) => {
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        const reference = await actionRequestReferencesService.attachReference(
+          params.id,
+          body,
+          currentUser,
+        );
+        set.status = 201;
+        return successResponse({ reference }, "Action request reference attached");
+      },
+      {
+        params: actionRequestParamsSchema,
+        body: attachActionRequestReferenceBodySchema,
+        response: {
+          201: actionRequestReferenceMutationResponseSchema,
+          409: apiErrorResponseSchema,
+          ...protectedErrors,
+        },
+        detail: {
+          tags: ["Action Requests"],
+          summary: "Attach a reference to an action request",
+          security: [{ bearerAuth: [] }],
+        },
+      },
+    )
+    .delete(
+      "/:id/references/:referenceLinkId",
+      async ({ accessToken, headers, params }) => {
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        await actionRequestReferencesService.removeReference(
+          params.id,
+          params.referenceLinkId,
+          currentUser,
+        );
+        return successResponse(
+          { deleted: true },
+          "Action request reference removed",
+        );
+      },
+      {
+        params: actionRequestReferenceParamsSchema,
+        response: {
+          200: actionRequestReferenceDeleteResponseSchema,
+          ...protectedErrors,
+        },
+        detail: {
+          tags: ["Action Requests"],
+          summary: "Remove a reference from an action request",
           security: [{ bearerAuth: [] }],
         },
       },
@@ -116,6 +192,33 @@ export const createActionRequestRoutes = (
         detail: {
           tags: ["Action Requests"],
           summary: "Record manager action and release linked tickets",
+          security: [{ bearerAuth: [] }],
+        },
+      },
+    )
+    .get(
+      "/:id",
+      async ({ accessToken, headers, params }) => {
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        const actionRequest = await actionRequestsService.getActionRequestDetail(
+          params.id,
+          currentUser,
+        );
+        return successResponse({ actionRequest }, "Action request retrieved");
+      },
+      {
+        params: actionRequestParamsSchema,
+        response: {
+          200: actionRequestDetailResponseSchema,
+          ...protectedErrors,
+        },
+        detail: {
+          tags: ["Action Requests"],
+          summary: "Get grouped action request detail",
           security: [{ bearerAuth: [] }],
         },
       },

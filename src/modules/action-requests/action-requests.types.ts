@@ -1,4 +1,9 @@
-import type { ActionRequest, ActionRequestComplaint } from "../../db/schema";
+import type {
+  ActionRequest,
+  ActionRequestComplaint,
+  ActionRequestReference,
+  ReferenceSource,
+} from "../../db/schema";
 import type { ComplaintCategory } from "../complaints/complaints.types";
 
 export type ActionRequestStatus = ActionRequest["status"];
@@ -55,6 +60,36 @@ export interface ActionRequestDetail extends ActionRequestListItem {
     linkedAt: string;
     complaintText: string;
     ticketStatus: string | null;
+  }>;
+  references: Array<{
+    id: ActionRequestReference["id"];
+    actionRequestId: ActionRequestReference["actionRequestId"];
+    referenceSourceId: ActionRequestReference["referenceSourceId"];
+    usageType: ActionRequestReference["usageType"];
+    snapshotText: ActionRequestReference["snapshotText"];
+    note: ActionRequestReference["note"];
+    createdAt: string;
+    attachedBy: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    referenceSource: Pick<
+      ReferenceSource,
+      | "category"
+      | "content"
+      | "fileMimeType"
+      | "fileName"
+      | "fileSize"
+      | "fileUrl"
+      | "id"
+      | "sourceType"
+      | "status"
+      | "storageKey"
+      | "storageProvider"
+      | "title"
+      | "url"
+    >;
   }>;
 }
 

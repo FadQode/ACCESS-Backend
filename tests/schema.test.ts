@@ -108,6 +108,12 @@ describe("database schema", () => {
     expect(uniqueNamesFor(referenceSourceTags)).toContain(
       "reference_source_tags_pk",
     );
+    expect(uniqueNamesFor(actionRequestReferences)).toContain(
+      "action_request_references_request_source_unique",
+    );
+    expect(uniqueNamesFor(quickResponseReferences)).toContain(
+      "quick_response_references_session_source_unique",
+    );
     expect(uniqueNamesFor(agentPerformance)).toContain(
       "agent_performance_agent_period_unique",
     );
@@ -128,6 +134,11 @@ describe("database schema", () => {
     expect(
       configFor(referenceSources).indexes.map((index) => index.config.name),
     ).toContain("reference_sources_storage_key_idx");
+    expect(
+      configFor(quickResponseReferences).indexes.map(
+        (index) => index.config.name,
+      ),
+    ).toContain("quick_response_references_selection_source_idx");
   });
 
   test("enforces expected foreign-key counts", () => {

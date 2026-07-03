@@ -78,6 +78,22 @@ export interface ReferenceDetail extends ReferenceListItem {
   createdBy: string;
 }
 
+export interface ReferenceSourcePreview {
+  category: ComplaintCategory | null;
+  content: string | null;
+  fileMimeType: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  fileUrl: string | null;
+  id: string;
+  sourceType: ReferenceSourceType;
+  status: ReferenceStatus;
+  storageKey: string | null;
+  storageProvider: string | null;
+  title: string;
+  url: string | null;
+}
+
 export interface ReferenceTagItem {
   createdAt: string;
   id: ReferenceTag["id"];

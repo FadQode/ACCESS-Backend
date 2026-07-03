@@ -41,6 +41,24 @@ export interface TicketJoinedRecord {
   managerClosureMessage: string | null;
 }
 
+export interface TicketClosureContextRecord {
+  actionRequestActionTaken: string | null;
+  actionRequestClosureMessage: string | null;
+  actionRequestClusterLabel: string | null;
+  actionRequestId: string | null;
+  actionRequestReferenceNo: string | null;
+  actionRequestStatus: typeof actionRequests.$inferSelect.status | null;
+  complaintCategory: typeof complaints.$inferSelect.category;
+  complaintId: string;
+  complaintReferenceNo: string;
+  complaintStatus: typeof complaints.$inferSelect.status;
+  complaintText: string;
+  ticketAgentId: string | null;
+  ticketId: string;
+  ticketPriority: typeof tickets.$inferSelect.priority;
+  ticketStatus: typeof tickets.$inferSelect.status;
+}
+
 export interface TicketsRepository {
   createTicket(
     input: CreateTicketInput,
@@ -55,6 +73,9 @@ export interface TicketsRepository {
     executor?: DatabaseExecutor,
   ): Promise<typeof tickets.$inferSelect | null>;
   findTicketDetailById(id: string): Promise<TicketJoinedRecord | null>;
+  findTicketClosureContextById(
+    id: string,
+  ): Promise<TicketClosureContextRecord | null>;
   findTickets(filters: Required<Pick<TicketFilters, "page" | "limit">> & TicketFilters): Promise<{
     items: TicketJoinedRecord[];
     total: number;
@@ -152,6 +173,40 @@ export const createTicketsRepository = (db: Database): TicketsRepository => ({
       .where(eq(tickets.id, id))
       .limit(1);
     return ticket ?? null;
+  },
+
+  async findTicketClosureContextById(id) {
+    const [context] = await db
+      .select({
+        ticketId: tickets.id,
+        ticketAgentId: tickets.agentId,
+        ticketStatus: tickets.status,
+        ticketPriority: tickets.priority,
+        complaintId: complaints.id,
+        complaintReferenceNo: complaints.referenceNo,
+        complaintCategory: complaints.category,
+        complaintText: complaints.complaintText,
+        complaintStatus: complaints.status,
+        actionRequestId: actionRequests.id,
+        actionRequestReferenceNo: actionRequests.referenceNo,
+        actionRequestClusterLabel: actionRequests.clusterLabel,
+        actionRequestActionTaken: actionRequests.actionTaken,
+        actionRequestClosureMessage: actionRequests.closureMessage,
+        actionRequestStatus: actionRequests.status,
+      })
+      .from(tickets)
+      .innerJoin(complaints, eq(tickets.complaintId, complaints.id))
+      .leftJoin(
+        actionRequestComplaints,
+        eq(actionRequestComplaints.ticketId, tickets.id),
+      )
+      .leftJoin(
+        actionRequests,
+        eq(actionRequestComplaints.actionRequestId, actionRequests.id),
+      )
+      .where(eq(tickets.id, id))
+      .limit(1);
+    return context ?? null;
   },
 
   async findTickets(filters) {

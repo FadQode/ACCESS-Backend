@@ -22,6 +22,28 @@ export const responseTargetSchema = t.Union([
   t.Literal("internal_note"),
 ]);
 
+const quickResponseReferenceSelectionSourceSchema = t.Union([
+  t.Literal("agent_selected"),
+  t.Literal("manager_attached"),
+]);
+
+const quickResponseReferenceUsageSchema = t.Union([
+  t.Literal("response_basis"),
+  t.Literal("template_used"),
+  t.Literal("policy_support"),
+  t.Literal("known_issue"),
+  t.Literal("previous_resolution"),
+  t.Literal("action_closure"),
+  t.Literal("closure_support"),
+]);
+
+const quickResponseReferenceUsageItemSchema = t.Object({
+  referenceSourceId: t.String({ format: "uuid" }),
+  selectionSource: t.Optional(quickResponseReferenceSelectionSourceSchema),
+  usageType: quickResponseReferenceUsageSchema,
+  note: optionalNullableString(),
+});
+
 export const saveQuickResponseBodySchema = t.Object({
   complaint: t.Object({
     complaintText: t.String({ minLength: 10 }),
@@ -48,6 +70,9 @@ export const saveComplaintQuickResponseBodySchema = t.Composite([
   saveQuickResponseBodySchema.properties.response,
   t.Object({
     ticketId: t.Optional(t.Union([t.String({ format: "uuid" }), t.Null()])),
+    references: t.Optional(
+      t.Array(quickResponseReferenceUsageItemSchema, { maxItems: 10 }),
+    ),
   }),
 ]);
 

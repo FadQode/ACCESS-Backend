@@ -3,6 +3,8 @@ import { Elysia } from "elysia";
 import type { AppConfig } from "./config/env";
 import { createTransactionManager, type Database } from "./db";
 import { createActionRequestRoutes } from "./modules/action-requests/action-requests.routes";
+import { createActionRequestReferencesRepository } from "./modules/action-requests/action-request-references.repository";
+import { createActionRequestReferencesService } from "./modules/action-requests/action-request-references.service";
 import { createActionRequestsRepository } from "./modules/action-requests/action-requests.repository";
 import { createActionRequestsService } from "./modules/action-requests/action-requests.service";
 import { createActionRequestGroupingService } from "./modules/action-requests/action-request-grouping.service";
@@ -13,6 +15,8 @@ import { createComplaintsRepository } from "./modules/complaints/complaints.repo
 import { createComplaintsService } from "./modules/complaints/complaints.service";
 import { createHealthRoutes } from "./modules/health/health.routes";
 import { createQuickResponseRoutes } from "./modules/quick-responses/quick-responses.routes";
+import { createQuickResponseReferencesRepository } from "./modules/quick-responses/quick-response-references.repository";
+import { createQuickResponseReferencesService } from "./modules/quick-responses/quick-response-references.service";
 import { createQuickResponsesRepository } from "./modules/quick-responses/quick-responses.repository";
 import { createQuickResponsesService } from "./modules/quick-responses/quick-responses.service";
 import { createReferenceRoutes } from "./modules/references/references.routes";
@@ -30,16 +34,31 @@ export const createRoutes = (config: AppConfig, db: Database) => {
   const complaintsRepository = createComplaintsRepository(db);
   const complaintsService = createComplaintsService(complaintsRepository);
   const actionRequestsRepository = createActionRequestsRepository(db);
+  const actionRequestReferencesRepository =
+    createActionRequestReferencesRepository(db);
+  const referencesRepository = createReferencesRepository(db);
   const actionRequestsService = createActionRequestsService(
     transactionManager,
     actionRequestsRepository,
     createActionRequestGroupingService(),
+    actionRequestReferencesRepository,
+  );
+  const actionRequestReferencesService = createActionRequestReferencesService(
+    actionRequestsRepository,
+    referencesRepository,
+    actionRequestReferencesRepository,
   );
   const ticketsService = createTicketsService(
     transactionManager,
     createTicketsRepository(db),
     complaintsRepository,
     actionRequestsService,
+    actionRequestReferencesRepository,
+  );
+  const quickResponseReferencesService = createQuickResponseReferencesService(
+    referencesRepository,
+    actionRequestReferencesRepository,
+    createQuickResponseReferencesRepository(db),
   );
   const quickResponsesService = createQuickResponsesService(
     transactionManager,
@@ -47,10 +66,11 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     complaintsRepository,
     createQuickResponsesRepository(db),
     ticketsService,
+    quickResponseReferencesService,
   );
   const referencesService = createReferencesService(
     transactionManager,
-    createReferencesRepository(db),
+    referencesRepository,
     createSupabaseStorageService(config.supabase),
   );
 
@@ -75,6 +95,7 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     .use(
       createActionRequestRoutes(config, {
         authService,
+        actionRequestReferencesService,
         actionRequestsService,
       }),
     );

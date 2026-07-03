@@ -1,4 +1,5 @@
 import type { Ticket } from "../../db/schema";
+import type { actionRequestReferenceItemSchema } from "../action-requests/action-requests.dto";
 import type {
   ComplaintCategory,
   ComplaintStatus,
@@ -55,4 +56,28 @@ export interface TicketDetail extends TicketListItem {
     name: string;
     email: string;
   } | null;
+}
+
+export interface TicketClosureContext {
+  actionRequest: {
+    actionTaken: string | null;
+    closureMessage: string | null;
+    clusterLabel: string | null;
+    id: string;
+    referenceNo: string;
+    status: string;
+  };
+  attachedReferences: Array<typeof actionRequestReferenceItemSchema.static>;
+  complaint: {
+    category: ComplaintCategory;
+    complaintText: string;
+    id: string;
+    referenceNo: string;
+    status: ComplaintStatus;
+  };
+  ticket: {
+    id: string;
+    priority: TicketPriority;
+    status: TicketStatus;
+  };
 }

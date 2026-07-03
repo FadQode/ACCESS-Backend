@@ -9,6 +9,10 @@ import { normalizeText } from "../../shared/utils/normalize-text";
 import { generateActionRequestReferenceNo } from "../../shared/utils/reference-number";
 import type { AuthUser } from "../auth/auth.types";
 import type { ActionRequestGroupingService } from "./action-request-grouping.service";
+import {
+  toActionRequestReferenceItem,
+} from "./action-request-references.service";
+import type { ActionRequestReferencesRepository } from "./action-request-references.repository";
 import type { ActionRequestsRepository } from "./action-requests.repository";
 import type {
   ActionRequestDetail,
@@ -81,6 +85,7 @@ export const createActionRequestsService = (
   transactionManager: DatabaseTransactionManager,
   repository: ActionRequestsRepository,
   groupingService: ActionRequestGroupingService,
+  referencesRepository: ActionRequestReferencesRepository,
 ): ActionRequestsService => ({
   async createOrReuseForTicket(input, executor) {
     const issueKey = groupingService.detectIssueKey({
@@ -174,14 +179,17 @@ export const createActionRequestsService = (
       );
     }
 
+    const references = await referencesRepository.findActionRequestReferences(id);
+
     return {
       ...toListItem(detail.actionRequest),
       actionTaken: detail.actionRequest.actionTaken,
       closureMessage: detail.actionRequest.closureMessage,
       linkedComplaints: detail.linkedComplaints.map((link) => ({
         ...link,
-        linkedAt: iso(link.linkedAt),
+          linkedAt: iso(link.linkedAt),
       })),
+      references: references.map(toActionRequestReferenceItem),
     };
   },
 

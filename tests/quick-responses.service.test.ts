@@ -9,6 +9,7 @@ import type { AuthUser } from "../src/modules/auth/auth.types";
 import type { ComplaintsRepository } from "../src/modules/complaints/complaints.repository";
 import type { ComplaintsService } from "../src/modules/complaints/complaints.service";
 import type { QuickResponsesRepository } from "../src/modules/quick-responses/quick-responses.repository";
+import type { QuickResponseReferencesService } from "../src/modules/quick-responses/quick-response-references.service";
 import { createQuickResponsesService } from "../src/modules/quick-responses/quick-responses.service";
 import type { StableQuickResponseOutcome } from "../src/modules/quick-responses/quick-responses.types";
 import type { TicketsService } from "../src/modules/tickets/tickets.service";
@@ -259,5 +260,204 @@ describe("quick responses service", () => {
       code: "TICKET_NOT_FOUND",
     });
     expect(sessionWasCreated).toBe(false);
+  });
+
+  test("requires ticketId when saving quick response references", async () => {
+    let sessionWasCreated = false;
+    const transactionManager: DatabaseTransactionManager = {
+      async transaction(callback) {
+        return callback({} as DatabaseExecutor);
+      },
+    };
+    const complaintsRepository = {
+      async findComplaintById() {
+        return {
+          id: "10000000-0000-4000-8000-000000000001",
+          referenceNo: "ACC-20260615-TEST",
+          trackingToken: "trk_test",
+          source: "app_store",
+          sourceHandle: null,
+          sourceUrl: null,
+          complainerName: null,
+          complainerContact: null,
+          category: "payment",
+          complaintText: "Saldo sudah terpotong tapi tiket tidak muncul.",
+          status: "waiting_action",
+          submittedAt: now,
+          resolvedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+      },
+    } as unknown as ComplaintsRepository;
+    const repository = {
+      async createQuickResponseSession() {
+        sessionWasCreated = true;
+        throw new Error("session should not be created");
+      },
+    } as unknown as QuickResponsesRepository;
+    const service = createQuickResponsesService(
+      transactionManager,
+      {} as ComplaintsService,
+      complaintsRepository,
+      repository,
+      {} as TicketsService,
+    );
+
+    await expect(
+      service.saveQuickResponseForComplaint(
+        "10000000-0000-4000-8000-000000000001",
+        {
+          responseTarget: "app_review",
+          finalResponse: null,
+          outcome: "copy_only",
+          references: [
+            {
+              referenceSourceId: "50000000-0000-4000-8000-000000000001",
+              usageType: "closure_support",
+            },
+          ],
+        },
+        agent,
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "QUICK_RESPONSE_REFERENCE_TICKET_REQUIRED",
+    });
+    expect(sessionWasCreated).toBe(false);
+  });
+
+  test("saves quick response references after validating closure context", async () => {
+    let createdRows: unknown[] = [];
+    let usageActionRequestId = "";
+    let usageSessionId = "";
+    const transactionManager: DatabaseTransactionManager = {
+      async transaction(callback) {
+        return callback({ tx: true } as unknown as DatabaseExecutor);
+      },
+    };
+    const complaintsRepository = {
+      async findComplaintById() {
+        return {
+          id: "10000000-0000-4000-8000-000000000001",
+          referenceNo: "ACC-20260615-TEST",
+          trackingToken: "trk_test",
+          source: "app_store",
+          sourceHandle: null,
+          sourceUrl: null,
+          complainerName: null,
+          complainerContact: null,
+          category: "payment",
+          complaintText: "Saldo sudah terpotong tapi tiket tidak muncul.",
+          status: "waiting_action",
+          submittedAt: now,
+          resolvedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+      },
+    } as unknown as ComplaintsRepository;
+    const repository = {
+      async createQuickResponseSession(
+        input: Parameters<
+          QuickResponsesRepository["createQuickResponseSession"]
+        >[0],
+      ) {
+        return {
+          ...input,
+          id: "20000000-0000-4000-8000-000000000001",
+          ticketId: input.ticketId ?? null,
+          createdAt: now,
+          updatedAt: now,
+        } as QuickResponseSession;
+      },
+    } as unknown as QuickResponsesRepository;
+    const ticketsService = {
+      async findTicketById() {
+        return {
+          id: "30000000-0000-4000-8000-000000000001",
+          complaintId: "10000000-0000-4000-8000-000000000001",
+          agentId: agent.id,
+          status: "manager_action_done",
+          priority: "medium",
+          heaResponse: "Mohon maaf atas kendala.",
+          heaSentAt: now,
+          closureMessage: null,
+          closureSentAt: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+      },
+      assertCanAccessTicket() {},
+      async getClosureContext() {
+        return {
+          actionRequest: {
+            id: "40000000-0000-4000-8000-000000000001",
+          },
+        };
+      },
+    } as unknown as TicketsService;
+    const quickResponseReferencesService = {
+      async buildReferenceUsageRows(
+        input: Parameters<
+          QuickResponseReferencesService["buildReferenceUsageRows"]
+        >[0],
+      ) {
+        usageActionRequestId = input.actionRequestId;
+        usageSessionId = input.quickResponseSessionId;
+        return [
+          {
+            quickResponseSessionId: input.quickResponseSessionId,
+            referenceSourceId: input.references[0]?.referenceSourceId ?? "",
+            referencedBy: input.currentUser.id,
+            selectionSource: "manager_attached",
+            usageType: input.references[0]?.usageType ?? "closure_support",
+            snapshotText: "SOP Refund",
+          },
+        ];
+      },
+      async createReferenceUsage(
+        rows: Parameters<
+          QuickResponseReferencesService["createReferenceUsage"]
+        >[0],
+      ) {
+        createdRows = rows;
+      },
+    } as unknown as QuickResponseReferencesService;
+    const service = createQuickResponsesService(
+      transactionManager,
+      {} as ComplaintsService,
+      complaintsRepository,
+      repository,
+      ticketsService,
+      quickResponseReferencesService,
+    );
+
+    const result = await service.saveQuickResponseForComplaint(
+      "10000000-0000-4000-8000-000000000001",
+      {
+        ticketId: "30000000-0000-4000-8000-000000000001",
+        responseTarget: "app_review",
+        finalResponse: null,
+        outcome: "copy_only",
+        references: [
+          {
+            referenceSourceId: "50000000-0000-4000-8000-000000000001",
+            selectionSource: "manager_attached",
+            usageType: "closure_support",
+          },
+        ],
+      },
+      agent,
+    );
+
+    expect(result.quickResponseSession.id).toBe(
+      "20000000-0000-4000-8000-000000000001",
+    );
+    expect(usageActionRequestId).toBe(
+      "40000000-0000-4000-8000-000000000001",
+    );
+    expect(usageSessionId).toBe("20000000-0000-4000-8000-000000000001");
+    expect(createdRows).toHaveLength(1);
   });
 });
