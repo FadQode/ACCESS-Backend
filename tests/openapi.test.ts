@@ -141,6 +141,18 @@ describe("OpenAPI documentation", () => {
       expect(
         document.paths["/tickets/{id}/closure-context"]?.get?.security,
       ).toEqual([{ bearerAuth: [] }]);
+      expect(document.paths["/dashboard/agent/summary"]?.get?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
+      expect(document.paths["/dashboard/manager/summary"]?.get?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
+      expect(document.paths["/reports/agents/performance"]?.get?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
+      expect(document.paths["/reports/agents/{agentId}"]?.get?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
       expect(
         document.paths["/action-requests/{id}/take-action"]?.patch?.security,
       ).toEqual([{ bearerAuth: [] }]);

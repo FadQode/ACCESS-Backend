@@ -13,6 +13,9 @@ import { createAuthService } from "./modules/auth/auth.service";
 import { createComplaintRoutes } from "./modules/complaints/complaints.routes";
 import { createComplaintsRepository } from "./modules/complaints/complaints.repository";
 import { createComplaintsService } from "./modules/complaints/complaints.service";
+import { createDashboardRepository } from "./modules/dashboard/dashboard.repository";
+import { createDashboardRoutes } from "./modules/dashboard/dashboard.routes";
+import { createDashboardService } from "./modules/dashboard/dashboard.service";
 import { createHealthRoutes } from "./modules/health/health.routes";
 import { createQuickResponseRoutes } from "./modules/quick-responses/quick-responses.routes";
 import { createQuickResponseReferencesRepository } from "./modules/quick-responses/quick-response-references.repository";
@@ -22,6 +25,9 @@ import { createQuickResponsesService } from "./modules/quick-responses/quick-res
 import { createReferenceRoutes } from "./modules/references/references.routes";
 import { createReferencesRepository } from "./modules/references/references.repository";
 import { createReferencesService } from "./modules/references/references.service";
+import { createReportsRepository } from "./modules/reports/reports.repository";
+import { createReportRoutes } from "./modules/reports/reports.routes";
+import { createReportsService } from "./modules/reports/reports.service";
 import { createSupabaseStorageService } from "./integrations/supabase/supabase-storage.service";
 import { createTicketRoutes } from "./modules/tickets/tickets.routes";
 import { createTicketsRepository } from "./modules/tickets/tickets.repository";
@@ -73,6 +79,10 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     referencesRepository,
     createSupabaseStorageService(config.supabase),
   );
+  const dashboardService = createDashboardService(
+    createDashboardRepository(db),
+  );
+  const reportsService = createReportsService(createReportsRepository(db));
 
   return new Elysia({ name: "application-routes" })
     .use(createHealthRoutes(config))
@@ -91,6 +101,8 @@ export const createRoutes = (config: AppConfig, db: Database) => {
       }),
     )
     .use(createReferenceRoutes(config, { authService, referencesService }))
+    .use(createDashboardRoutes(config, { authService, dashboardService }))
+    .use(createReportRoutes(config, { authService, reportsService }))
     .use(createTicketRoutes(config, { authService, ticketsService }))
     .use(
       createActionRequestRoutes(config, {
