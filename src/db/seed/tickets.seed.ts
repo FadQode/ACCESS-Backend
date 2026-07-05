@@ -64,9 +64,14 @@ export const ticketSeedData = [
   {
     id: "00000000-0000-4000-8002-000000000006",
     complaintId: "00000000-0000-4000-8001-000000000008",
-    agentId: null,
-    status: "open",
+    agentId: "00000000-0000-4000-8000-000000000006",
+    status: "manager_action_done",
     priority: "medium",
+    heaResponse:
+      "Kami memahami informasi perubahan jadwal belum tampil di aplikasi. Mohon maaf atas ketidaknyamanan ini.",
+    heaSentAt: new Date("2026-05-25T09:00:00.000Z"),
+    closureMessage:
+      "Tim operasional telah memperbarui sinkronisasi jadwal dan notifikasi rute terdampak.",
   },
 ] as const satisfies ReadonlyArray<NewTicket>;
 

@@ -54,8 +54,8 @@ export const quickResponseSeedData = [
     selectedApologize: "Mohon maaf atas gangguan yang Anda alami.",
     selectedTakeAction: null,
     finalResponse:
-      "Kami memahami kendala pembatalan tiket dari aplikasi. Mohon maaf atas gangguan yang Anda alami. Keluhan Anda kami simpan sebagai tiket agar dapat ditindaklanjuti.",
-    outcome: "saved_ticket",
+      "Kami memahami kendala pembatalan tiket dari aplikasi. Mohon maaf atas gangguan yang Anda alami. Tim kami sedang menindaklanjuti dan akan mengabari perkembangan berikutnya.",
+    outcome: "sent_hea_action",
   },
   {
     id: "00000000-0000-4000-8003-000000000004",
@@ -138,14 +138,15 @@ export const quickResponseSeedData = [
     sourceChannel: "other",
     sourceHandle: "call-center",
     responseTone: "neutral",
-    responseTarget: "internal_note",
-    selectedHear: "Call center mencatat perubahan jadwal tidak tampil.",
-    selectedEmpathize: null,
-    selectedApologize: null,
+    responseTarget: "dm",
+    selectedHear: "Kami memahami informasi perubahan jadwal belum tampil di aplikasi.",
+    selectedEmpathize:
+      "Kondisi ini dapat membuat perjalanan sulit direncanakan.",
+    selectedApologize: "Mohon maaf atas ketidaknyamanan tersebut.",
     selectedTakeAction: null,
     finalResponse:
-      "Draft internal: cek sinkronisasi jadwal dan notifikasi untuk rute terdampak.",
-    outcome: "copy_only",
+      "Kami memahami informasi perubahan jadwal belum tampil di aplikasi. Mohon maaf atas ketidaknyamanan tersebut. Tim kami sedang menindaklanjuti sinkronisasi jadwal dan notifikasi rute terdampak.",
+    outcome: "sent_hea_action",
   },
 ] as const satisfies ReadonlyArray<NewQuickResponseSession>;
 

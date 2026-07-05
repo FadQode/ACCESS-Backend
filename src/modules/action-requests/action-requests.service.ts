@@ -47,7 +47,7 @@ const toListItem = (request: ActionRequest): ActionRequestListItem => ({
   resolvedAt: nullableIso(request.resolvedAt),
   createdAt: iso(request.createdAt),
   updatedAt: iso(request.updatedAt),
-});
+}); 
 
 export interface ActionRequestsService {
   createOrReuseForTicket(

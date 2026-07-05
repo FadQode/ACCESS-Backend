@@ -108,7 +108,7 @@ export const complaintSeedData = [
     complainerContact: "081200000008",
     category: "delay",
     complaintText: "Informasi perubahan jadwal tidak muncul di aplikasi.",
-    status: "submitted",
+    status: "waiting_action",
   },
 ] as const satisfies ReadonlyArray<NewComplaint>;
 
