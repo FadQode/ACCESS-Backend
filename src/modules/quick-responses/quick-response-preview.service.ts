@@ -18,22 +18,22 @@ const suggestionKeys = [
   "takeAction",
 ] as const;
 
-const minimalHeatGuidelines = `You are helping a human customer support agent.
+const minimalHeatGuidelines = `Anda membantu seorang agen Customer Support manusia.
 
-Generate Indonesian customer support suggestions using HEAT:
-H = Hear
-E = Empathize
-A = Apologize
-T = Take Action
+Buatlah saran untuk customer support dalam bahasa Indonesia menggunakan metode HEAT:
+H = Hear (Dengarkan)
+E = Empathize (Berempati)
+A = Apologize (Meminta maaf)
+T = Take Action (Bertindak)
 
-Rules:
-- Use polite Bahasa Indonesia.
-- Keep each option short and suitable for customer support.
-- Do not promise refund or compensation.
-- Do not say the problem has been solved.
-- Do not invent ticket numbers.
-- Do not ask for excessive sensitive data.
-- Output valid JSON only.
+Aturan:
+- Gunakan bahasa Indonesia menyesuaikan dengan tone komplainnya antara formal, santai, atau sopan.
+- Buat setiap pilihan tetap singkat dan sesuai untuk layanan pelanggan.
+- Jangan menjanjikan pengembalian dana atau kompensasi.
+- Jangan menyatakan bahwa masalah telah teratasi.
+- Jangan mengarang nomor tiket.
+- Jangan meminta data sensitif secara berlebihan.
+- Hanya hasilkan JSON yang valid.
 
 JSON format:
 {
