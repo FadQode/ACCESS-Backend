@@ -36,7 +36,13 @@ describe("loadEnv", () => {
   test("parses typed integration settings", () => {
     const config = loadEnv({
       AI_ENABLED: "true",
-      AI_PROVIDER: "fastapi",
+      AI_CHAT_COMPLETIONS_URL: "http://localhost:20128/v1/chat/completions",
+      AI_GUIDELINES_PATH: "src/modules/quick-responses/prompts/heat-guidelines.txt",
+      AI_MAX_INPUT_CHARS: "4000",
+      AI_MAX_OUTPUT_TOKENS: "900",
+      AI_MODEL: "oc/deepseek-v4-flash-free",
+      AI_PROVIDER: "opencode",
+      AI_TEMPERATURE: "0.2",
       CORS_CREDENTIALS: "false",
       DATABASE_MAX_CONNECTIONS: "20",
       REDIS_ENABLED: "true",
@@ -47,7 +53,17 @@ describe("loadEnv", () => {
     });
 
     expect(config.ai.enabled).toBe(true);
-    expect(config.ai.provider).toBe("fastapi");
+    expect(config.ai.provider).toBe("opencode");
+    expect(config.ai.chatCompletionsUrl).toBe(
+      "http://localhost:20128/v1/chat/completions",
+    );
+    expect(config.ai.model).toBe("oc/deepseek-v4-flash-free");
+    expect(config.ai.maxInputChars).toBe(4000);
+    expect(config.ai.maxOutputTokens).toBe(900);
+    expect(config.ai.temperature).toBe(0.2);
+    expect(config.ai.guidelinesPath).toBe(
+      "src/modules/quick-responses/prompts/heat-guidelines.txt",
+    );
     expect(config.corsCredentials).toBe(false);
     expect(config.database.maxConnections).toBe(20);
     expect(config.redis.enabled).toBe(true);

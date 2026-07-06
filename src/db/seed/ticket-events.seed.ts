@@ -75,6 +75,103 @@ export const ticketEventSeedData = [
     eventType: "created",
     note: "System-created ticket from call-center complaint.",
   },
+  {
+    id: "00000000-0000-4000-8010-000000000011",
+    ticketId: "00000000-0000-4000-8002-000000000007",
+    actorId: "00000000-0000-4000-8000-000000000004",
+    eventType: "manager_action_linked",
+    note: "Double-charge payment issue linked to the open payment cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0001" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000012",
+    ticketId: "00000000-0000-4000-8002-000000000008",
+    actorId: "00000000-0000-4000-8000-000000000003",
+    eventType: "manager_action_done",
+    note: "Delay notification fix completed for the linked operational cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0002" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000013",
+    ticketId: "00000000-0000-4000-8002-000000000009",
+    actorId: "00000000-0000-4000-8000-000000000005",
+    eventType: "manager_action_linked",
+    note: "Ticket-not-issued payment issue linked to the open payment cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0001" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000014",
+    ticketId: "00000000-0000-4000-8002-000000000010",
+    actorId: "00000000-0000-4000-8000-000000000006",
+    eventType: "manager_action_linked",
+    note: "Cancellation failure linked to the manager review cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0003" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000015",
+    ticketId: "00000000-0000-4000-8002-000000000011",
+    actorId: "00000000-0000-4000-8000-000000000006",
+    eventType: "manager_action_linked",
+    note: "Checkout crash linked to the open app checkout cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0005" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000016",
+    ticketId: "00000000-0000-4000-8002-000000000012",
+    actorId: "00000000-0000-4000-8000-000000000007",
+    eventType: "manager_action_linked",
+    note: "Promo checkout error linked to the open app checkout cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0005" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000017",
+    ticketId: "00000000-0000-4000-8002-000000000013",
+    actorId: "00000000-0000-4000-8000-000000000007",
+    eventType: "manager_action_linked",
+    note: "Pending booking after charge linked to the open payment cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0001" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000018",
+    ticketId: "00000000-0000-4000-8002-000000000014",
+    actorId: "00000000-0000-4000-8000-000000000008",
+    eventType: "closed",
+    note: "Station facility case closed after staff opened access and added checks.",
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000019",
+    ticketId: "00000000-0000-4000-8002-000000000015",
+    actorId: "00000000-0000-4000-8000-000000000003",
+    eventType: "manager_action_done",
+    note: "Station and app delay information were synchronized.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0002" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000020",
+    ticketId: "00000000-0000-4000-8002-000000000016",
+    actorId: "00000000-0000-4000-8000-000000000004",
+    eventType: "manager_action_linked",
+    note: "QR payment ticket-not-issued issue linked to the open payment cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0001" },
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000021",
+    ticketId: "00000000-0000-4000-8002-000000000017",
+    actorId: "00000000-0000-4000-8000-000000000004",
+    eventType: "manager_action_linked",
+    note: "Recent payment issue linked to the open payment cluster.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0001" },
+    createdAt: new Date("2026-07-02T02:45:00.000Z"),
+  },
+  {
+    id: "00000000-0000-4000-8010-000000000022",
+    ticketId: "00000000-0000-4000-8002-000000000018",
+    actorId: "00000000-0000-4000-8000-000000000003",
+    eventType: "manager_action_done",
+    note: "Recent delay information mismatch resolved by operations.",
+    metadata: { actionRequestReferenceNo: "AR-2026-0002" },
+    createdAt: new Date("2026-07-03T04:25:00.000Z"),
+  },
 ] as const satisfies ReadonlyArray<NewTicketEvent>;
 
 export const seedTicketEvents = async (db: Database): Promise<number> => {
@@ -82,7 +179,12 @@ export const seedTicketEvents = async (db: Database): Promise<number> => {
 
   const seededEvents = await db
     .insert(ticketEvents)
-    .values(ticketEventSeedData.map((event) => ({ ...event, createdAt })))
+    .values(
+      ticketEventSeedData.map((event) => ({
+        ...event,
+        createdAt: "createdAt" in event ? event.createdAt : createdAt,
+      })),
+    )
     .onConflictDoUpdate({
       target: ticketEvents.id,
       set: {

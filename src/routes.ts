@@ -17,6 +17,8 @@ import { createDashboardRepository } from "./modules/dashboard/dashboard.reposit
 import { createDashboardRoutes } from "./modules/dashboard/dashboard.routes";
 import { createDashboardService } from "./modules/dashboard/dashboard.service";
 import { createHealthRoutes } from "./modules/health/health.routes";
+import { createAiChatClient } from "./integrations/ai/ai.client";
+import { createQuickResponsePreviewService } from "./modules/quick-responses/quick-response-preview.service";
 import { createQuickResponseRoutes } from "./modules/quick-responses/quick-responses.routes";
 import { createQuickResponseReferencesRepository } from "./modules/quick-responses/quick-response-references.repository";
 import { createQuickResponseReferencesService } from "./modules/quick-responses/quick-response-references.service";
@@ -74,6 +76,10 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     ticketsService,
     quickResponseReferencesService,
   );
+  const quickResponsePreviewService = createQuickResponsePreviewService(
+    config.ai,
+    createAiChatClient(config.ai),
+  );
   const referencesService = createReferencesService(
     transactionManager,
     referencesRepository,
@@ -97,6 +103,7 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     .use(
       createQuickResponseRoutes(config, {
         authService,
+        quickResponsePreviewService,
         quickResponsesService,
       }),
     )

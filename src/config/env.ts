@@ -1,7 +1,7 @@
 export type NodeEnvironment = "development" | "test" | "production";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export type CookieSameSite = "strict" | "lax" | "none";
-export type AiProvider = "mock" | "fastapi" | "llm";
+export type AiProvider = "mock" | "fastapi" | "llm" | "opencode";
 
 export interface DatabaseConfig {
   connectTimeoutSeconds: number;
@@ -33,9 +33,14 @@ export interface OpenApiConfig {
 
 export interface AiConfig {
   apiKey?: string;
-  baseUrl: string;
+  chatCompletionsUrl: string;
   enabled: boolean;
+  guidelinesPath: string;
+  maxInputChars: number;
+  maxOutputTokens: number;
+  model: string;
   provider: AiProvider;
+  temperature: number;
   timeoutMs: number;
 }
 
@@ -82,7 +87,12 @@ const allowedCookieSameSite = new Set<CookieSameSite>([
   "lax",
   "none",
 ]);
-const allowedAiProviders = new Set<AiProvider>(["mock", "fastapi", "llm"]);
+const allowedAiProviders = new Set<AiProvider>([
+  "mock",
+  "fastapi",
+  "llm",
+  "opencode",
+]);
 
 const readString = (
   value: string | undefined,
@@ -126,6 +136,22 @@ const readInteger = (
     throw new Error(
       `${name} must be an integer between ${minimum} and ${maximum}`,
     );
+  }
+
+  return resolved;
+};
+
+const readNumber = (
+  value: string | undefined,
+  fallback: number,
+  name: string,
+  minimum: number,
+  maximum: number,
+): number => {
+  const resolved = Number(value ?? fallback);
+
+  if (!Number.isFinite(resolved) || resolved < minimum || resolved > maximum) {
+    throw new Error(`${name} must be a number between ${minimum} and ${maximum}`);
   }
 
   return resolved;
@@ -206,9 +232,9 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
   );
   const aiEnabled = readBoolean(source.AI_ENABLED, false, "AI_ENABLED");
   const redisUrl = readString(source.REDIS_URL, "redis://localhost:6379");
-  const aiBaseUrl = readString(
-    source.AI_BASE_URL,
-    "http://localhost:8000",
+  const aiChatCompletionsUrl = readString(
+    source.AI_CHAT_COMPLETIONS_URL ?? source.AI_BASE_URL,
+    "http://localhost:20128/v1/chat/completions",
   );
   const openApiPath = readHttpPath(
     source.OPENAPI_PATH,
@@ -220,8 +246,10 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
     throw new Error("REDIS_URL is required when REDIS_ENABLED is true");
   }
 
-  if (aiEnabled && !aiBaseUrl) {
-    throw new Error("AI_BASE_URL is required when AI_ENABLED is true");
+  if (aiEnabled && !aiChatCompletionsUrl) {
+    throw new Error(
+      "AI_CHAT_COMPLETIONS_URL is required when AI_ENABLED is true",
+    );
   }
 
   return {
@@ -229,17 +257,43 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
       ...(source.AI_API_KEY?.trim()
         ? { apiKey: source.AI_API_KEY.trim() }
         : {}),
-      baseUrl: aiBaseUrl,
+      chatCompletionsUrl: aiChatCompletionsUrl,
       enabled: aiEnabled,
+      guidelinesPath: readString(
+        source.AI_GUIDELINES_PATH,
+        "src/modules/quick-responses/prompts/heat-guidelines.txt",
+      ),
+      maxInputChars: readInteger(
+        source.AI_MAX_INPUT_CHARS,
+        15_000,
+        "AI_MAX_INPUT_CHARS",
+        100,
+        100_000,
+      ),
+      maxOutputTokens: readInteger(
+        source.AI_MAX_OUTPUT_TOKENS,
+        10_000,
+        "AI_MAX_OUTPUT_TOKENS",
+        1,
+        32_768,
+      ),
+      model: readString(source.AI_MODEL ?? source.MODEL, "oc/deepseek-v4-flash-free"),
       provider: readEnum(
         source.AI_PROVIDER,
         "mock",
         allowedAiProviders,
         "AI_PROVIDER",
       ),
+      temperature: readNumber(
+        source.AI_TEMPERATURE,
+        0.3,
+        "AI_TEMPERATURE",
+        0,
+        2,
+      ),
       timeoutMs: readInteger(
         source.AI_TIMEOUT_MS,
-        10_000,
+        20_000,
         "AI_TIMEOUT_MS",
         100,
         120_000,

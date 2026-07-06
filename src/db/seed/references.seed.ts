@@ -327,6 +327,16 @@ export const actionRequestReferenceSeedData = [
     snapshotText:
       "Checklist pemeriksaan fasilitas stasiun setelah laporan pelanggan.",
   },
+  {
+    id: "00000000-0000-4000-8009-000000000005",
+    actionRequestId: "00000000-0000-4000-8004-000000000005",
+    referenceSourceId: "00000000-0000-4000-8006-000000000004",
+    attachedBy: "00000000-0000-4000-8000-000000000003",
+    usageType: "policy_support",
+    snapshotText:
+      "Template ringkas untuk membalas review aplikasi dengan nada formal dan tindak lanjut jelas.",
+    note: "Used for app checkout cluster response consistency.",
+  },
 ] as const satisfies ReadonlyArray<NewActionRequestReference>;
 
 export const seedReferences = async (db: Database): Promise<number> => {

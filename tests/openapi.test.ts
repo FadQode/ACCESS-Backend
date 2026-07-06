@@ -111,6 +111,9 @@ describe("OpenAPI documentation", () => {
       expect(document.paths["/quick-responses"]?.post?.security).toEqual([
         { bearerAuth: [] },
       ]);
+      expect(document.paths["/quick-responses/preview"]?.post?.security).toEqual([
+        { bearerAuth: [] },
+      ]);
       expect(document.paths["/complaints/{id}/quick-responses"]?.post?.security).toEqual([
         { bearerAuth: [] },
       ]);
@@ -161,7 +164,21 @@ describe("OpenAPI documentation", () => {
           "application/json"
         ]?.schema?.properties?.response?.properties?.outcome?.enum,
       ).toEqual(["sent_resolved", "sent_hea_action", "copy_only"]);
-      expect(document.paths).not.toHaveProperty("/quick-responses/preview");
+      expect(
+        document.paths["/quick-responses/preview"]?.post?.requestBody?.content?.[
+          "application/json"
+        ]?.schema?.properties?.category?.enum,
+      ).toEqual([
+        "delay",
+        "refund",
+        "cancellation",
+        "lost_item",
+        "facility",
+        "payment",
+        "account",
+        "app_error",
+        "other",
+      ]);
       expect(document.paths).not.toHaveProperty("/quick-responses/{id}/references");
       expect(document.paths).not.toHaveProperty("/audit-logs");
       expect(document.paths).not.toHaveProperty("/ticket-events");
