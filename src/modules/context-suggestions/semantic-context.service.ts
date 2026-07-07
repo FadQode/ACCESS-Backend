@@ -6,7 +6,6 @@ import type { EmbeddingClient } from "../../integrations/embeddings/embedding.ty
 import {
   buildQueryEmbeddedText,
   assertEmbeddingDimension,
-  CURRENT_EMBEDDING_VERSION,
 } from "../embeddings";
 import type { ComplaintCategory } from "../complaints/complaints.types";
 import {
@@ -184,7 +183,7 @@ export const createSemanticContextService = (
       safely(() =>
         repository.findRelevantReferenceCandidates({
           embedding: embeddingResponse.embedding,
-          embeddingVersion: CURRENT_EMBEDDING_VERSION,
+          embeddingVersion: embeddingConfig.version,
           limit: semanticConfig.candidateLimit,
           modelName: embeddingConfig.model,
         }),
@@ -192,7 +191,7 @@ export const createSemanticContextService = (
       safely(() =>
         repository.findSimilarResolvedCaseCandidates({
           embedding: embeddingResponse.embedding,
-          embeddingVersion: CURRENT_EMBEDDING_VERSION,
+          embeddingVersion: embeddingConfig.version,
           limit: semanticConfig.candidateLimit,
           modelName: embeddingConfig.model,
         }),

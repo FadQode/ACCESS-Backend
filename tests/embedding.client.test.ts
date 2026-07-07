@@ -13,6 +13,7 @@ const config: EmbeddingConfig = {
   model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
   serviceUrl: "https://example.test/embed",
   timeoutMs: 10_000,
+  version: 2,
 };
 
 const vector = Array.from({ length: 384 }, (_, index) => index / 384);

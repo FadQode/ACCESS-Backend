@@ -1,13 +1,12 @@
 import type { ComplaintCategory } from "../complaints/complaints.types";
 
-export const CURRENT_EMBEDDING_VERSION = 1;
-
 export interface ReferenceEmbeddingSource {
   category: ComplaintCategory | null;
   content: string | null;
   fileName: string | null;
   id: string;
   sourceType: string;
+  tags: string[];
   title: string;
   updatedAt: Date;
 }

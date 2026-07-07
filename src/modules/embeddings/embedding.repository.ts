@@ -34,8 +34,17 @@ export const createEmbeddingRepository = (db: Database): EmbeddingRepository => 
           rs.content,
           rs.file_name as "fileName",
           rs.source_type as "sourceType",
+          coalesce(
+            array_agg(rt.name order by lower(rt.name))
+              filter (where rt.name is not null and btrim(rt.name) <> ''),
+            '{}'
+          ) as tags,
           rs.updated_at as "updatedAt"
         from reference_sources rs
+        left join reference_source_tags rst
+          on rst.reference_source_id = rs.id
+        left join reference_tags rt
+          on rt.id = rst.tag_id
         left join reference_source_embeddings rse
           on rse.reference_source_id = rs.id
           and rse.model_name = ${modelName}
@@ -45,6 +54,15 @@ export const createEmbeddingRepository = (db: Database): EmbeddingRepository => 
             rse.id is null
             or rs.updated_at > rse.updated_at
           )
+        group by
+          rs.id,
+          rs.title,
+          rs.category,
+          rs.content,
+          rs.created_at,
+          rs.file_name,
+          rs.source_type,
+          rs.updated_at
         order by rs.updated_at asc, rs.created_at asc
         limit ${limit}
       `),

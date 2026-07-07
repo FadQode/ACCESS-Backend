@@ -9,7 +9,6 @@ import {
   chunkArray,
 } from "./embedding-vector.util";
 import {
-  CURRENT_EMBEDDING_VERSION,
   type EmbeddingBackfillSummary,
   type EmbeddingRepository,
   type ReferenceEmbeddingSource,
@@ -69,7 +68,7 @@ export const createEmbeddingBackfillService = (
     assertEmbeddingReady(config);
 
     const references = await repository.findReferencesNeedingEmbedding({
-      embeddingVersion: CURRENT_EMBEDDING_VERSION,
+      embeddingVersion: config.version,
       limit: input.limit,
       modelName: config.model,
     });
@@ -99,7 +98,7 @@ export const createEmbeddingBackfillService = (
             repository.upsertReferenceEmbedding({
               embeddedText: row.embeddedText,
               embedding: embeddings[index] ?? [],
-              embeddingVersion: CURRENT_EMBEDDING_VERSION,
+              embeddingVersion: config.version,
               modelName: config.model,
               referenceSourceId: (row.source as ReferenceEmbeddingSource).id,
             }),
@@ -118,7 +117,7 @@ export const createEmbeddingBackfillService = (
     assertEmbeddingReady(config);
 
     const cases = await repository.findResolvedCasesNeedingEmbedding({
-      embeddingVersion: CURRENT_EMBEDDING_VERSION,
+      embeddingVersion: config.version,
       limit: input.limit,
       modelName: config.model,
     });
@@ -150,7 +149,7 @@ export const createEmbeddingBackfillService = (
                 .complaintId,
               embeddedText: row.embeddedText,
               embedding: embeddings[index] ?? [],
-              embeddingVersion: CURRENT_EMBEDDING_VERSION,
+              embeddingVersion: config.version,
               modelName: config.model,
               quickResponseSessionId: (
                 row.source as ResolvedCaseEmbeddingSource

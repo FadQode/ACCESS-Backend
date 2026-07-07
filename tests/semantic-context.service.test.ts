@@ -34,6 +34,7 @@ const embeddingConfig: EmbeddingConfig = {
   model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
   serviceUrl: "https://example.test/embed",
   timeoutMs: 10_000,
+  version: 2,
 };
 
 const vector = Array.from({ length: 384 }, () => 0.1);
@@ -87,14 +88,17 @@ const resolvedCaseCandidate = (
 
 describe("semantic context service", () => {
   test("returns sanitized ranked semantic context without public scores", async () => {
+    const repositoryVersionCalls: number[] = [];
     const repository: SemanticContextRepository = {
-      async findRelevantReferenceCandidates() {
+      async findRelevantReferenceCandidates(input) {
+        repositoryVersionCalls.push(input.embeddingVersion);
         return [
           referenceCandidate({ id: "weak", similarity: 0.4 }),
           referenceCandidate({ id: "strong", similarity: 0.7 }),
         ];
       },
-      async findSimilarResolvedCaseCandidates() {
+      async findSimilarResolvedCaseCandidates(input) {
+        repositoryVersionCalls.push(input.embeddingVersion);
         return [
           resolvedCaseCandidate({ complaintId: "case-1" }),
           resolvedCaseCandidate({
@@ -117,6 +121,7 @@ describe("semantic context service", () => {
     });
 
     expect(result.relevantReferences).toHaveLength(1);
+    expect(repositoryVersionCalls).toEqual([2, 2]);
     expect(result.relevantReferences[0]?.id).toBe("strong");
     expect(result.relevantReferences[0]).not.toHaveProperty("score");
     expect(result.relevantReferences[0]).not.toHaveProperty("similarity");

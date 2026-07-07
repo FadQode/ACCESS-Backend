@@ -27,6 +27,7 @@ describe("loadEnv", () => {
       model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
       serviceUrl: "https://fadq-access-embedding.hf.space/embed",
       timeoutMs: 10_000,
+      version: 2,
     });
     expect(config.embedding.apiKey).toBeUndefined();
     expect(config.semanticContext).toEqual({
@@ -77,6 +78,7 @@ describe("loadEnv", () => {
         "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
       EMBEDDING_SERVICE_URL: "https://example.test/embed",
       EMBEDDING_TIMEOUT_MS: "15000",
+      EMBEDDING_VERSION: "3",
       REDIS_ENABLED: "true",
       REFERENCE_MAX_FILE_SIZE_MB: "8",
       SUPABASE_REFERENCE_BUCKET: "references_storage",
@@ -115,6 +117,7 @@ describe("loadEnv", () => {
     expect(config.embedding.batchSize).toBe(8);
     expect(config.embedding.dimension).toBe(384);
     expect(config.embedding.timeoutMs).toBe(15_000);
+    expect(config.embedding.version).toBe(3);
     expect(config.semanticContext).toEqual({
       candidateLimit: 12,
       caseLimit: 4,

@@ -14,11 +14,33 @@ describe("embedding text builder", () => {
         content: "  Saldo terpotong   dan tiket belum muncul. ",
         fileName: "sop-payment.pdf",
         sourceType: "policy",
+        tags: [" tiket-tidak-muncul ", "", "pembayaran", "saldo-terpotong"],
         title: " SOP Saldo Terpotong ",
       }),
     ).toBe(
-      "SOP Saldo Terpotong payment policy Saldo terpotong dan tiket belum muncul. sop-payment.pdf",
+      "SOP Saldo Terpotong payment policy pembayaran saldo-terpotong tiket-tidak-muncul Saldo terpotong dan tiket belum muncul. sop-payment.pdf",
     );
+  });
+
+  test("builds reference text from safe public fields only", () => {
+    const reference = {
+      category: "payment" as const,
+      content: "Panduan pembayaran.",
+      fileName: null,
+      signedUrl: "https://signed-url.example.test/private",
+      sourceType: "policy",
+      storageBucket: "private-bucket",
+      storageKey: "private/storage-key.pdf",
+      tags: ["policy-support", "payment"],
+      title: "Payment SOP",
+    };
+    const text = buildReferenceEmbeddedText(reference);
+
+    expect(text).toContain("payment");
+    expect(text).toContain("Payment SOP");
+    expect(text).not.toContain("private/storage-key.pdf");
+    expect(text).not.toContain("private-bucket");
+    expect(text).not.toContain("signed-url");
   });
 
   test("builds resolved case text without customer metadata fields", () => {

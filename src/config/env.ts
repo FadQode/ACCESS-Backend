@@ -54,6 +54,7 @@ export interface EmbeddingConfig {
   model: string;
   serviceUrl: string;
   timeoutMs: number;
+  version: number;
 }
 
 export interface SemanticContextConfig {
@@ -465,6 +466,13 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
         "EMBEDDING_TIMEOUT_MS",
         100,
         120_000,
+      ),
+      version: readInteger(
+        source.EMBEDDING_VERSION,
+        2,
+        "EMBEDDING_VERSION",
+        1,
+        1_000,
       ),
     },
     host: readString(source.HOST, "0.0.0.0"),
