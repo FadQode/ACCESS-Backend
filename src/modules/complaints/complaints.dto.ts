@@ -14,14 +14,16 @@ export const complaintSourceSchema = t.Union([
 ]);
 
 export const complaintCategorySchema = t.Union([
-  t.Literal("delay"),
-  t.Literal("refund"),
-  t.Literal("cancellation"),
+  t.Literal("ticket_booking"),
+  t.Literal("app_error"),
+  t.Literal("account"),
+  t.Literal("payment"),
+  t.Literal("app_update"),
+  t.Literal("no_response_cs"),
+  t.Literal("refund_cancel"),
+  t.Literal("queue_problem"),
   t.Literal("lost_item"),
   t.Literal("facility"),
-  t.Literal("payment"),
-  t.Literal("account"),
-  t.Literal("app_error"),
   t.Literal("other"),
 ]);
 

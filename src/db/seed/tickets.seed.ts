@@ -24,7 +24,7 @@ export const ticketSeedData = [
       "Kami memahami keterlambatan tanpa pemberitahuan mengganggu perjalanan Anda. Mohon maaf, kami koordinasikan pembaruan informasi.",
     heaSentAt: new Date("2026-05-25T05:00:00.000Z"),
     closureMessage:
-      "Pembaruan notifikasi delay sudah dikirim ulang dan tim operasional memperbaiki kanal pengumuman.",
+      "Pembaruan status aplikasi sudah dikirim ulang dan tim operasional memperbaiki kanal pengumuman.",
   },
   {
     id: "00000000-0000-4000-8002-000000000003",
@@ -88,10 +88,10 @@ export const ticketSeedData = [
     status: "manager_action_done",
     priority: "high",
     heaResponse:
-      "Kami memahami notifikasi delay terlambat diterima. Mohon maaf, tim operasional sedang memeriksa sinkronisasi jadwal.",
+      "Kami memahami notifikasi status perjalanan terlambat diterima. Mohon maaf, tim operasional sedang memeriksa sinkronisasi jadwal.",
     heaSentAt: new Date("2026-05-25T09:40:00.000Z"),
     closureMessage:
-      "Sinkronisasi jadwal telah diperbarui dan notifikasi delay dikirim ulang.",
+      "Sinkronisasi jadwal telah diperbarui dan notifikasi status perjalanan dikirim ulang.",
   },
   {
     id: "00000000-0000-4000-8002-000000000009",
@@ -163,7 +163,7 @@ export const ticketSeedData = [
     status: "manager_action_done",
     priority: "medium",
     heaResponse:
-      "Kami memahami informasi delay berbeda antara aplikasi dan stasiun. Mohon maaf, tim operasional sedang menyelaraskan informasi.",
+      "Kami memahami informasi aplikasi berbeda dengan pengumuman stasiun. Mohon maaf, tim operasional sedang menyelaraskan informasi.",
     heaSentAt: new Date("2026-05-25T12:00:00.000Z"),
     closureMessage:
       "Informasi aplikasi dan pengumuman stasiun telah diselaraskan oleh tim operasional.",
@@ -197,10 +197,10 @@ export const ticketSeedData = [
     status: "manager_action_done",
     priority: "high",
     heaResponse:
-      "Kami memahami informasi delay terlambat dan berbeda antar kanal. Mohon maaf, tim operasional sedang menyelaraskan data.",
+      "Kami memahami informasi aplikasi terlambat dan berbeda antar kanal. Mohon maaf, tim operasional sedang menyelaraskan data.",
     heaSentAt: new Date("2026-07-03T03:50:00.000Z"),
     closureMessage:
-      "Data delay aplikasi dan pengumuman stasiun telah diselaraskan ulang.",
+      "Data aplikasi dan pengumuman stasiun telah diselaraskan ulang.",
     createdAt: new Date("2026-07-03T03:50:00.000Z"),
     updatedAt: new Date("2026-07-03T04:25:00.000Z"),
   },

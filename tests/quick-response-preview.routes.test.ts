@@ -138,7 +138,7 @@ describe("quick response preview routes", () => {
     const managerToken = await login(app, "manager1@access.test");
     const requestBody = {
       complaintText: "Refund pembatalan tiket saya belum masuk.",
-      category: "refund",
+      category: "refund_cancel",
     };
     const adminResponse = await app.handle(
       new Request("http://localhost/quick-responses/preview", {

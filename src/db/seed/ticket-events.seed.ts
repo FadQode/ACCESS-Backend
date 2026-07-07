@@ -31,7 +31,7 @@ export const ticketEventSeedData = [
     ticketId: "00000000-0000-4000-8002-000000000002",
     actorId: "00000000-0000-4000-8000-000000000005",
     eventType: "created",
-    note: "Ticket created for delay notification issue.",
+    note: "Ticket created for app status notification issue.",
   },
   {
     id: "00000000-0000-4000-8010-000000000005",
@@ -45,7 +45,7 @@ export const ticketEventSeedData = [
     ticketId: "00000000-0000-4000-8002-000000000003",
     actorId: "00000000-0000-4000-8000-000000000006",
     eventType: "assigned",
-    note: "Assigned to app cancellation support agent.",
+    note: "Assigned to refund/cancellation support agent.",
   },
   {
     id: "00000000-0000-4000-8010-000000000007",
@@ -143,7 +143,7 @@ export const ticketEventSeedData = [
     ticketId: "00000000-0000-4000-8002-000000000015",
     actorId: "00000000-0000-4000-8000-000000000003",
     eventType: "manager_action_done",
-    note: "Station and app delay information were synchronized.",
+    note: "Station and app status information were synchronized.",
     metadata: { actionRequestReferenceNo: "AR-2026-0002" },
   },
   {
@@ -168,7 +168,7 @@ export const ticketEventSeedData = [
     ticketId: "00000000-0000-4000-8002-000000000018",
     actorId: "00000000-0000-4000-8000-000000000003",
     eventType: "manager_action_done",
-    note: "Recent delay information mismatch resolved by operations.",
+    note: "Recent app status information mismatch resolved by operations.",
     metadata: { actionRequestReferenceNo: "AR-2026-0002" },
     createdAt: new Date("2026-07-03T04:25:00.000Z"),
   },

@@ -20,14 +20,16 @@ export const complaintSourceEnum = pgEnum("complaint_source", [
 ]);
 
 export const complaintCategoryEnum = pgEnum("complaint_category", [
-  "delay",
-  "refund",
-  "cancellation",
+  "ticket_booking",
+  "app_error",
+  "account",
+  "payment",
+  "app_update",
+  "no_response_cs",
+  "refund_cancel",
+  "queue_problem",
   "lost_item",
   "facility",
-  "payment",
-  "account",
-  "app_error",
   "other",
 ]);
 

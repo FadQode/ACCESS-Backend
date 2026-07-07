@@ -62,7 +62,7 @@ describe("context suggestions service", () => {
           resolvedCaseCandidate({
             complaintId: "case-2",
             complaintText: "Refund belum masuk.",
-            category: "refund",
+            category: "refund_cancel",
             finalResponse: "Refund sedang dicek.",
           }),
         ];

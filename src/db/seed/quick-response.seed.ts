@@ -30,13 +30,13 @@ export const quickResponseSeedData = [
     sourceHandle: "@rangga_access",
     responseTone: "concise",
     responseTarget: "public_reply",
-    selectedHear: "Kami memahami informasi delay belum diterima tepat waktu.",
+    selectedHear: "Kami memahami informasi aplikasi belum diterima tepat waktu.",
     selectedEmpathize:
       "Keterlambatan tanpa pemberitahuan membuat perjalanan sulit direncanakan.",
     selectedApologize: "Mohon maaf atas ketidaknyamanan tersebut.",
     selectedTakeAction: null,
     finalResponse:
-      "Kami memahami informasi delay belum diterima tepat waktu. Mohon maaf atas ketidaknyamanan tersebut. Kami koordinasikan pembaruan informasi dengan tim operasional.",
+      "Kami memahami informasi aplikasi belum diterima tepat waktu. Mohon maaf atas ketidaknyamanan tersebut. Kami koordinasikan pembaruan informasi dengan tim operasional.",
     outcome: "sent_hea_action",
   },
   {
@@ -193,13 +193,13 @@ export const quickResponseSeedData = [
     sourceHandle: "@tera.commute",
     responseTone: "concise",
     responseTarget: "dm",
-    selectedHear: "Kami memahami notifikasi delay baru muncul setelah berangkat.",
+    selectedHear: "Kami memahami notifikasi status perjalanan baru muncul setelah berangkat.",
     selectedEmpathize:
       "Keterlambatan informasi membuat perjalanan sulit disesuaikan.",
     selectedApologize: "Mohon maaf atas keterlambatan informasi tersebut.",
     selectedTakeAction: null,
     finalResponse:
-      "Kami memahami notifikasi delay baru muncul setelah berangkat. Mohon maaf atas keterlambatan informasi tersebut. Tim operasional sedang memperbarui sinkronisasi jadwal.",
+      "Kami memahami notifikasi status perjalanan baru muncul setelah berangkat. Mohon maaf atas keterlambatan informasi tersebut. Tim operasional sedang memperbarui sinkronisasi jadwal.",
     outcome: "sent_hea_action",
   },
   {
@@ -339,13 +339,13 @@ export const quickResponseSeedData = [
     responseTone: "concise",
     responseTarget: "dm",
     selectedHear:
-      "Kami memahami informasi delay berbeda antara aplikasi dan stasiun.",
+      "Kami memahami informasi aplikasi berbeda dengan pengumuman stasiun.",
     selectedEmpathize:
       "Perbedaan informasi dapat membuat perjalanan membingungkan.",
     selectedApologize: "Mohon maaf atas ketidaksesuaian informasi tersebut.",
     selectedTakeAction: null,
     finalResponse:
-      "Kami memahami informasi delay berbeda antara aplikasi dan stasiun. Mohon maaf atas ketidaksesuaian informasi tersebut. Tim operasional sedang menyelaraskan informasi.",
+      "Kami memahami informasi aplikasi berbeda dengan pengumuman stasiun. Mohon maaf atas ketidaksesuaian informasi tersebut. Tim operasional sedang menyelaraskan informasi.",
     outcome: "sent_hea_action",
   },
   {
@@ -395,13 +395,13 @@ export const quickResponseSeedData = [
     responseTone: "concise",
     responseTarget: "dm",
     selectedHear:
-      "Kami memahami informasi delay terlambat dan berbeda antar kanal.",
+      "Kami memahami informasi aplikasi terlambat dan berbeda antar kanal.",
     selectedEmpathize:
       "Perbedaan informasi membuat perjalanan sulit direncanakan.",
     selectedApologize: "Mohon maaf atas ketidaksesuaian informasi tersebut.",
     selectedTakeAction: null,
     finalResponse:
-      "Kami memahami informasi delay terlambat dan berbeda antar kanal. Mohon maaf atas ketidaksesuaian informasi tersebut. Tim operasional sedang menyelaraskan data aplikasi dan stasiun.",
+      "Kami memahami informasi aplikasi terlambat dan berbeda antar kanal. Mohon maaf atas ketidaksesuaian informasi tersebut. Tim operasional sedang menyelaraskan data aplikasi dan stasiun.",
     outcome: "sent_hea_action",
     createdAt: new Date("2026-07-03T03:55:00.000Z"),
     updatedAt: new Date("2026-07-03T03:55:00.000Z"),

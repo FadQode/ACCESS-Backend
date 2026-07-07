@@ -26,7 +26,7 @@ const inputFor = (outcome: StableQuickResponseOutcome) => ({
   complaint: {
     complaintText: "Kereta terlambat dua jam tanpa pemberitahuan.",
     source: "app_store" as const,
-    category: "delay" as const,
+    category: "app_update" as const,
   },
   response: {
     responseTarget: "app_review" as const,

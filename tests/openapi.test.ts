@@ -169,14 +169,16 @@ describe("OpenAPI documentation", () => {
           "application/json"
         ]?.schema?.properties?.category?.enum,
       ).toEqual([
-        "delay",
-        "refund",
-        "cancellation",
+        "ticket_booking",
+        "app_error",
+        "account",
+        "payment",
+        "app_update",
+        "no_response_cs",
+        "refund_cancel",
+        "queue_problem",
         "lost_item",
         "facility",
-        "payment",
-        "account",
-        "app_error",
         "other",
       ]);
       expect(document.paths).not.toHaveProperty("/quick-responses/{id}/references");

@@ -62,8 +62,8 @@ describe("reports service", () => {
       },
       async getTopCategoryCountsByAgent() {
         return [
-          { agentId: agent.id, category: "refund", count: 2 },
-          { agentId: agent.id, category: "delay", count: 4 },
+          { agentId: agent.id, category: "refund_cancel", count: 2 },
+          { agentId: agent.id, category: "app_update", count: 4 },
         ];
       },
     } as unknown as ReportsRepository;
@@ -86,7 +86,7 @@ describe("reports service", () => {
         lastActivityAt: now.toISOString(),
         openCount: 2,
         resolvedCount: 3,
-        topCategory: "delay",
+        topCategory: "app_update",
       },
     ]);
   });
@@ -146,7 +146,7 @@ describe("reports service", () => {
       async getSingleAgentComplaintsByCategory() {
         return [
           { category: "payment", count: 3 },
-          { category: "delay", count: 1 },
+          { category: "app_update", count: 1 },
         ];
       },
       async getSingleAgentRecentCases(
@@ -211,8 +211,18 @@ describe("reports service", () => {
       { bucket: "2026-07-03", handledCount: 0, resolvedCount: 0 },
     ]);
     expect(result.complaintsByCategory).toEqual([
-      { category: "payment", count: 3, label: "Pembayaran", percentage: 75 },
-      { category: "delay", count: 1, label: "Keterlambatan", percentage: 25 },
+      {
+        category: "payment",
+        count: 3,
+        label: "Payment Error / Bayar",
+        percentage: 75,
+      },
+      {
+        category: "app_update",
+        count: 1,
+        label: "App Update / Complaint Update",
+        percentage: 25,
+      },
     ]);
     expect(result.recentCases.pagination).toEqual({
       page: 2,

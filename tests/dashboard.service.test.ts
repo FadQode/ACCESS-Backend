@@ -85,8 +85,8 @@ describe("dashboard service", () => {
       },
       async getManagerComplaintsByCategory() {
         return [
-          { category: "delay", count: 6 },
-          { category: "refund", count: 4 },
+          { category: "app_update", count: 6 },
+          { category: "refund_cancel", count: 4 },
         ];
       },
     } as unknown as DashboardRepository;
@@ -108,8 +108,18 @@ describe("dashboard service", () => {
       { bucket: "2026-07-03", escalated: 1, incoming: 0, resolved: 0 },
     ]);
     expect(result.complaintsByCategory).toEqual([
-      { category: "delay", label: "Keterlambatan", count: 6, percentage: 60 },
-      { category: "refund", label: "Pengembalian Dana", count: 4, percentage: 40 },
+      {
+        category: "app_update",
+        label: "App Update / Complaint Update",
+        count: 6,
+        percentage: 60,
+      },
+      {
+        category: "refund_cancel",
+        label: "Refund / Cancel",
+        count: 4,
+        percentage: 40,
+      },
     ]);
   });
 });

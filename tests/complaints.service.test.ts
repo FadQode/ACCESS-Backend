@@ -15,7 +15,7 @@ const complaint: Complaint = {
   sourceUrl: null,
   complainerName: null,
   complainerContact: null,
-  category: "delay",
+  category: "app_update",
   complaintText: "Kereta terlambat dua jam.",
   status: "submitted",
   submittedAt: now,

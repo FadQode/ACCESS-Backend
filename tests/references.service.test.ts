@@ -38,7 +38,7 @@ const activeReference: ReferenceSourceWithTags = {
   createdBy: manager.id,
   sourceType: "sop",
   title: "SOP Refund",
-  category: "refund",
+  category: "refund_cancel",
   content: "Refund handling steps",
   url: null,
   fileUrl: null,
@@ -54,7 +54,7 @@ const activeReference: ReferenceSourceWithTags = {
   metadata: null,
   createdAt: now,
   updatedAt: now,
-  tags: ["refund"],
+  tags: ["refund_cancel"],
 };
 
 const archivedReference: ReferenceSourceWithTags = {

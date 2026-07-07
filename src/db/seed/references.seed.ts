@@ -20,7 +20,7 @@ export const referenceSourceSeedData = [
     createdBy: "00000000-0000-4000-8000-000000000001",
     sourceType: "sop",
     title: "SOP Refund Saldo Terpotong",
-    category: "refund",
+    category: "refund_cancel",
     content:
       "Langkah verifikasi transaksi gagal, pengecekan booking, dan koordinasi refund saldo terpotong.",
     status: "active",
@@ -32,25 +32,25 @@ export const referenceSourceSeedData = [
     id: "00000000-0000-4000-8006-000000000002",
     createdBy: "00000000-0000-4000-8000-000000000001",
     sourceType: "faq",
-    title: "FAQ Pembatalan Tiket",
-    category: "cancellation",
+    title: "FAQ Refund dan Pembatalan Tiket",
+    category: "refund_cancel",
     content:
       "Panduan menjawab kendala pembatalan tiket, status booking, dan eskalasi aplikasi.",
     status: "active",
     version: "1.0",
-    searchText: "faq pembatalan tiket aplikasi booking cancellation",
+    searchText: "faq refund pembatalan tiket aplikasi booking cancellation",
   },
   {
     id: "00000000-0000-4000-8006-000000000003",
     createdBy: "00000000-0000-4000-8000-000000000002",
     sourceType: "guide",
-    title: "Panduan Menangani Keluhan Delay",
-    category: "delay",
+    title: "Panduan App Update dan Status Perjalanan",
+    category: "app_update",
     content:
-      "Gunakan HEA untuk keluhan delay, cek pengumuman operasional, dan berikan closure setelah notifikasi diperbarui.",
+      "Gunakan HEA untuk keluhan status aplikasi, cek pengumuman operasional, dan berikan closure setelah notifikasi diperbarui.",
     status: "active",
     version: "1.0",
-    searchText: "delay keterlambatan notifikasi operasional pengumuman",
+    searchText: "app update status perjalanan notifikasi operasional pengumuman",
   },
   {
     id: "00000000-0000-4000-8006-000000000004",
@@ -106,7 +106,7 @@ export const referenceSourceSeedData = [
     createdBy: "00000000-0000-4000-8000-000000000003",
     sourceType: "internal_note",
     title: "Internal Note: Refund Batch Coordination",
-    category: "refund",
+    category: "refund_cancel",
     content:
       "Refund batch diproses oleh finance setelah daftar transaksi terdampak dikonfirmasi.",
     status: "active",
@@ -130,13 +130,13 @@ export const referenceSourceSeedData = [
     id: "00000000-0000-4000-8006-000000000010",
     createdBy: "00000000-0000-4000-8000-000000000001",
     sourceType: "policy",
-    title: "Policy Kompensasi Delay",
-    category: "delay",
+    title: "Policy Update Status dan Notifikasi",
+    category: "app_update",
     content:
-      "Kebijakan kompensasi dan komunikasi pelanggan untuk keterlambatan layanan.",
+      "Kebijakan komunikasi pelanggan saat status aplikasi atau notifikasi belum sinkron.",
     status: "active",
     version: "1.0",
-    searchText: "policy kompensasi delay keterlambatan",
+    searchText: "policy app update status notifikasi sinkronisasi",
   },
   {
     id: "00000000-0000-4000-8006-000000000011",
@@ -151,20 +151,84 @@ export const referenceSourceSeedData = [
     version: "1.0",
     searchText: "uploaded file checklist fasilitas stasiun",
   },
+  {
+    id: "00000000-0000-4000-8006-000000000012",
+    createdBy: "00000000-0000-4000-8000-000000000001",
+    sourceType: "faq",
+    title: "FAQ Ticket dan Booking",
+    category: "ticket_booking",
+    content:
+      "Panduan pengecekan kode booking, tiket tidak muncul, dan status penerbitan tiket.",
+    status: "active",
+    version: "1.0",
+    searchText: "ticket booking tiket tidak muncul kode booking penerbitan tiket",
+  },
+  {
+    id: "00000000-0000-4000-8006-000000000013",
+    createdBy: "00000000-0000-4000-8000-000000000001",
+    sourceType: "guide",
+    title: "Panduan Login OTP dan Akun",
+    category: "account",
+    content:
+      "Panduan menjawab kendala login, OTP tidak masuk, nomor akun, dan pemulihan akses.",
+    status: "active",
+    version: "1.0",
+    searchText: "login otp akun nomor telepon pemulihan akses",
+  },
+  {
+    id: "00000000-0000-4000-8006-000000000014",
+    createdBy: "00000000-0000-4000-8000-000000000002",
+    sourceType: "sop",
+    title: "SOP CS Tidak Merespons",
+    category: "no_response_cs",
+    content:
+      "Langkah eskalasi saat pelanggan melaporkan chat CS tidak dibalas atau respons terlalu lama.",
+    status: "active",
+    version: "1.0",
+    searchText: "cs tidak merespons customer service no response chat tidak dibalas",
+  },
+  {
+    id: "00000000-0000-4000-8006-000000000015",
+    createdBy: "00000000-0000-4000-8000-000000000002",
+    sourceType: "known_issue",
+    title: "Known Issue Antrean Promo",
+    category: "queue_problem",
+    content:
+      "Panduan komunikasi untuk antrean promo, promo war, dan traffic tinggi saat pembelian tiket.",
+    status: "active",
+    version: "1.0",
+    searchText: "queue antrean promo war traffic tinggi pembelian tiket",
+  },
+  {
+    id: "00000000-0000-4000-8006-000000000016",
+    createdBy: "00000000-0000-4000-8000-000000000001",
+    sourceType: "template",
+    title: "Template Keluhan Umum",
+    category: "other",
+    content:
+      "Template respons aman untuk keluhan umum, no signal, atau laporan yang belum masuk kategori spesifik.",
+    status: "active",
+    version: "1.0",
+    searchText: "generic other lainnya no signal keluhan umum",
+  },
 ] as const satisfies ReadonlyArray<NewReferenceSource>;
 
 export const referenceTagSeedData = [
-  { id: "00000000-0000-4000-8007-000000000001", name: "refund" },
+  { id: "00000000-0000-4000-8007-000000000001", name: "refund_cancel" },
   { id: "00000000-0000-4000-8007-000000000002", name: "payment_failed" },
   { id: "00000000-0000-4000-8007-000000000003", name: "saldo_terpotong" },
   { id: "00000000-0000-4000-8007-000000000004", name: "ticket_not_issued" },
-  { id: "00000000-0000-4000-8007-000000000005", name: "delay" },
-  { id: "00000000-0000-4000-8007-000000000006", name: "cancellation" },
+  { id: "00000000-0000-4000-8007-000000000005", name: "app_update" },
+  { id: "00000000-0000-4000-8007-000000000006", name: "ticket_booking" },
   { id: "00000000-0000-4000-8007-000000000007", name: "app_error" },
   { id: "00000000-0000-4000-8007-000000000008", name: "lost_item" },
   { id: "00000000-0000-4000-8007-000000000009", name: "facility" },
   { id: "00000000-0000-4000-8007-000000000010", name: "gateway_timeout" },
   { id: "00000000-0000-4000-8007-000000000011", name: "closure_template" },
+  { id: "00000000-0000-4000-8007-000000000012", name: "account" },
+  { id: "00000000-0000-4000-8007-000000000013", name: "no_response_cs" },
+  { id: "00000000-0000-4000-8007-000000000014", name: "queue_problem" },
+  { id: "00000000-0000-4000-8007-000000000015", name: "other" },
 ] satisfies NewReferenceTag[];
 
 export const referenceSourceTagSeedData = [
@@ -227,6 +291,26 @@ export const referenceSourceTagSeedData = [
   {
     referenceSourceId: "00000000-0000-4000-8006-000000000011",
     tagId: "00000000-0000-4000-8007-000000000009",
+  },
+  {
+    referenceSourceId: "00000000-0000-4000-8006-000000000012",
+    tagId: "00000000-0000-4000-8007-000000000006",
+  },
+  {
+    referenceSourceId: "00000000-0000-4000-8006-000000000013",
+    tagId: "00000000-0000-4000-8007-000000000012",
+  },
+  {
+    referenceSourceId: "00000000-0000-4000-8006-000000000014",
+    tagId: "00000000-0000-4000-8007-000000000013",
+  },
+  {
+    referenceSourceId: "00000000-0000-4000-8006-000000000015",
+    tagId: "00000000-0000-4000-8007-000000000014",
+  },
+  {
+    referenceSourceId: "00000000-0000-4000-8006-000000000016",
+    tagId: "00000000-0000-4000-8007-000000000015",
   },
 ] satisfies NewReferenceSourceTag[];
 
@@ -316,7 +400,7 @@ export const actionRequestReferenceSeedData = [
     attachedBy: "00000000-0000-4000-8000-000000000003",
     usageType: "internal_note",
     snapshotText:
-      "Gunakan HEA untuk keluhan delay, cek pengumuman operasional, dan berikan closure setelah notifikasi diperbarui.",
+      "Gunakan HEA untuk keluhan status aplikasi, cek pengumuman operasional, dan berikan closure setelah notifikasi diperbarui.",
   },
   {
     id: "00000000-0000-4000-8009-000000000004",

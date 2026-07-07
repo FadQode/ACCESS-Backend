@@ -141,7 +141,7 @@ describe("semantic context service", () => {
       async findRelevantReferenceCandidates() {
         return [
           referenceCandidate({
-            category: "refund",
+            category: "refund_cancel",
             id: "higher-raw",
             similarity: 0.91,
             sourceType: "guide",

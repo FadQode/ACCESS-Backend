@@ -1,5 +1,5 @@
 CREATE TYPE "public"."action_request_status" AS ENUM('open', 'reviewing', 'action_planned', 'action_taken', 'closed');--> statement-breakpoint
-CREATE TYPE "public"."complaint_category" AS ENUM('delay', 'refund', 'cancellation', 'lost_item', 'facility', 'payment', 'account', 'app_error', 'other');--> statement-breakpoint
+CREATE TYPE "public"."complaint_category" AS ENUM('ticket_booking', 'app_error', 'account', 'payment', 'app_update', 'no_response_cs', 'refund_cancel', 'queue_problem', 'lost_item', 'facility', 'other');--> statement-breakpoint
 CREATE TYPE "public"."complaint_source" AS ENUM('web_form', 'twitter', 'instagram', 'facebook', 'google_play', 'app_store', 'other');--> statement-breakpoint
 CREATE TYPE "public"."complaint_status" AS ENUM('submitted', 'waiting_action', 'resolved', 'closed');--> statement-breakpoint
 CREATE TYPE "public"."quick_response_outcome" AS ENUM('sent_resolved', 'sent_hea_action', 'saved_ticket', 'escalated', 'copy_only');--> statement-breakpoint
