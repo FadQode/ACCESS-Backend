@@ -125,6 +125,8 @@ describe("quick response preview routes", () => {
     expect(body.data.suggestions.empathize).toHaveLength(3);
     expect(body.data.suggestions.apologize).toHaveLength(3);
     expect(body.data.suggestions.takeAction).toHaveLength(3);
+    expect(body.data.relevantReferences).toEqual([]);
+    expect(body.data.similarResolvedCases).toEqual([]);
     expect(body.data).not.toHaveProperty("finalResponse");
     expect(body.data).not.toHaveProperty("confidence");
     expect(body.data).not.toHaveProperty("requiresManagerAction");

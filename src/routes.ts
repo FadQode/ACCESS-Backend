@@ -18,6 +18,9 @@ import { createDashboardRoutes } from "./modules/dashboard/dashboard.routes";
 import { createDashboardService } from "./modules/dashboard/dashboard.service";
 import { createHealthRoutes } from "./modules/health/health.routes";
 import { createAiChatClient } from "./integrations/ai/ai.client";
+import { createEmbeddingClient } from "./integrations/embeddings/embedding.client";
+import { createSemanticContextRepository } from "./modules/context-suggestions/semantic-context.repository";
+import { createSemanticContextService } from "./modules/context-suggestions/semantic-context.service";
 import { createQuickResponsePreviewService } from "./modules/quick-responses/quick-response-preview.service";
 import { createQuickResponseRoutes } from "./modules/quick-responses/quick-responses.routes";
 import { createQuickResponseReferencesRepository } from "./modules/quick-responses/quick-response-references.repository";
@@ -76,10 +79,6 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     ticketsService,
     quickResponseReferencesService,
   );
-  const quickResponsePreviewService = createQuickResponsePreviewService(
-    config.ai,
-    createAiChatClient(config.ai),
-  );
   const referencesService = createReferencesService(
     transactionManager,
     referencesRepository,
@@ -89,6 +88,15 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     createDashboardRepository(db),
   );
   const reportsService = createReportsService(createReportsRepository(db));
+  const semanticContextService = createSemanticContextService(
+    config.semanticContext,
+    config.embedding,
+    createEmbeddingClient(config.embedding),
+    createSemanticContextRepository(db),
+  );
+  const previewContextService = {
+    getContextSuggestions: semanticContextService.getSemanticContextSuggestions,
+  };
 
   return new Elysia({ name: "application-routes" })
     .use(createHealthRoutes(config))
@@ -103,7 +111,11 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     .use(
       createQuickResponseRoutes(config, {
         authService,
-        quickResponsePreviewService,
+        quickResponsePreviewService: createQuickResponsePreviewService(
+          config.ai,
+          createAiChatClient(config.ai),
+          previewContextService,
+        ),
         quickResponsesService,
       }),
     )

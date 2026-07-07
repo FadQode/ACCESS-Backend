@@ -7,6 +7,10 @@ import {
 import { agentPerformance } from "./agent-performance.schema";
 import { auditLogs } from "./audit-logs.schema";
 import { complaints } from "./complaints.schema";
+import {
+  referenceSourceEmbeddings,
+  resolvedCaseEmbeddings,
+} from "./embeddings.schema";
 import { quickResponseSessions } from "./quick-response.schema";
 import {
   actionRequestReferences,
@@ -50,6 +54,7 @@ export const complaintsRelations = relations(complaints, ({ many, one }) => ({
   ticket: one(tickets),
   quickResponseSessions: many(quickResponseSessions),
   actionRequestLinks: many(actionRequestComplaints),
+  resolvedCaseEmbeddings: many(resolvedCaseEmbeddings),
 }));
 
 export const ticketsRelations = relations(tickets, ({ many, one }) => ({
@@ -84,6 +89,7 @@ export const quickResponseSessionsRelations = relations(
       references: [tickets.id],
     }),
     references: many(quickResponseReferences),
+    resolvedCaseEmbeddings: many(resolvedCaseEmbeddings),
   }),
 );
 
@@ -134,6 +140,31 @@ export const referenceSourcesRelations = relations(
     tagLinks: many(referenceSourceTags),
     quickResponseReferences: many(quickResponseReferences),
     actionRequestReferences: many(actionRequestReferences),
+    embeddings: many(referenceSourceEmbeddings),
+  }),
+);
+
+export const referenceSourceEmbeddingsRelations = relations(
+  referenceSourceEmbeddings,
+  ({ one }) => ({
+    source: one(referenceSources, {
+      fields: [referenceSourceEmbeddings.referenceSourceId],
+      references: [referenceSources.id],
+    }),
+  }),
+);
+
+export const resolvedCaseEmbeddingsRelations = relations(
+  resolvedCaseEmbeddings,
+  ({ one }) => ({
+    complaint: one(complaints, {
+      fields: [resolvedCaseEmbeddings.complaintId],
+      references: [complaints.id],
+    }),
+    quickResponseSession: one(quickResponseSessions, {
+      fields: [resolvedCaseEmbeddings.quickResponseSessionId],
+      references: [quickResponseSessions.id],
+    }),
   }),
 );
 

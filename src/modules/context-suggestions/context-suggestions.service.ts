@@ -30,6 +30,11 @@ type ScoredResolvedCasePreview = SimilarResolvedCasePreview & {
   score: number;
 };
 
+type ScoredReferencePreview = {
+  result: RelevantReferencePreview;
+  score: number;
+};
+
 const toIsoString = (value: Date | null): string | null =>
   value ? value.toISOString() : null;
 
@@ -50,7 +55,7 @@ const scoreReference = (
   input: ContextSuggestionsInput,
   keywords: string[],
   phrase: string,
-): RelevantReferencePreview | null => {
+): ScoredReferencePreview | null => {
   const titleMatches = countKeywordMatches(candidate.title, keywords);
   const searchableText = [
     candidate.content ?? "",
@@ -77,19 +82,21 @@ const scoreReference = (
   if (!passesGate || score < MIN_SCORE) return null;
 
   return {
-    id: candidate.id,
-    title: candidate.title,
-    category: candidate.category,
-    sourceType: candidate.sourceType,
-    snippet: createSnippet(
-      candidate.content ??
-        candidate.searchText ??
-        candidate.fileName ??
-        candidate.title,
-      keywords,
-      SNIPPET_CHARS,
-    ),
-    fileName: candidate.fileName,
+    result: {
+      id: candidate.id,
+      title: candidate.title,
+      category: candidate.category,
+      sourceType: candidate.sourceType,
+      snippet: createSnippet(
+        candidate.content ??
+          candidate.searchText ??
+          candidate.fileName ??
+          candidate.title,
+        keywords,
+        SNIPPET_CHARS,
+      ),
+      fileName: candidate.fileName,
+    },
     score,
   };
 };
@@ -176,18 +183,19 @@ export const createContextSuggestionsService = (
 
     const relevantReferences = referenceCandidates
       .map((candidate) => scoreReference(candidate, input, keywords, phrase))
-      .filter((candidate): candidate is RelevantReferencePreview =>
+      .filter((candidate): candidate is ScoredReferencePreview =>
         Boolean(candidate),
       )
       .sort(
         compareByScoreThenDate((candidate) => {
           const source = referenceCandidates.find(
-            (item) => item.id === candidate.id,
+            (item) => item.id === candidate.result.id,
           );
           return source?.updatedAt ?? null;
         }),
       )
-      .slice(0, TOP_REFERENCES);
+      .slice(0, TOP_REFERENCES)
+      .map((candidate) => candidate.result);
 
     const seenComplaintIds = new Set<string>();
     const similarResolvedCases = resolvedCaseCandidates

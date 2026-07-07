@@ -2,6 +2,7 @@ export * from "./action-requests.schema";
 export * from "./agent-performance.schema";
 export * from "./audit-logs.schema";
 export * from "./complaints.schema";
+export * from "./embeddings.schema";
 export * from "./quick-response.schema";
 export * from "./references.schema";
 export * from "./relations";

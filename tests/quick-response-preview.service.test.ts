@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type { AiConfig } from "../src/config/env";
 import type { AiChatClient } from "../src/integrations/ai/ai.types";
 import type { AuthUser } from "../src/modules/auth/auth.types";
+import type { ContextSuggestionsService } from "../src/modules/context-suggestions";
 import {
   createQuickResponsePreviewService,
   fallbackSuggestions,
@@ -28,6 +29,11 @@ const config: AiConfig = {
   provider: "opencode",
   temperature: 0.3,
   timeoutMs: 10000,
+};
+
+const emptyContext = {
+  relevantReferences: [],
+  similarResolvedCases: [],
 };
 
 describe("quick response preview service", () => {
@@ -83,8 +89,66 @@ describe("quick response preview service", () => {
     expect(result.suggestionSource).toBe("ai");
     expect(result.suggestions.hear).toEqual(["H1", "H2", "H3"]);
     expect(result.suggestions.empathize).toHaveLength(3);
+    expect(result.relevantReferences).toEqual([]);
+    expect(result.similarResolvedCases).toEqual([]);
     expect(prompt).toContain("Complaint:");
     expect(prompt).toContain("Category:");
+  });
+
+  test("adds context arrays without injecting context into the AI prompt", async () => {
+    let prompt = "";
+    const contextService: ContextSuggestionsService = {
+      async getContextSuggestions() {
+        return {
+          relevantReferences: [
+            {
+              category: "payment",
+              fileName: null,
+              id: "reference-1",
+              snippet: "Internal payment policy snippet.",
+              sourceType: "policy",
+              title: "Payment policy",
+            },
+          ],
+          similarResolvedCases: [
+            {
+              category: "payment",
+              complaintTextPreview: "Saldo terpotong.",
+              finalResponsePreview: "Kami bantu cek transaksi.",
+              resolvedAt: null,
+            },
+          ],
+        };
+      },
+    };
+    const service = createQuickResponsePreviewService(
+      config,
+      {
+        async createChatCompletion(input) {
+          prompt = input.messages.map((message) => message.content).join("\n");
+          return JSON.stringify({
+            hear: ["H1", "H2", "H3"],
+            empathize: ["E1", "E2", "E3"],
+            apologize: ["A1", "A2", "A3"],
+            takeAction: ["T1", "T2", "T3"],
+          });
+        },
+      } satisfies AiChatClient,
+      contextService,
+    );
+
+    const result = await service.generatePreview(
+      {
+        complaintText: "Saldo saya terpotong tapi tiket tidak muncul.",
+        category: "payment",
+      },
+      agent,
+    );
+
+    expect(result.relevantReferences).toHaveLength(1);
+    expect(result.similarResolvedCases).toHaveLength(1);
+    expect(prompt).not.toContain("Internal payment policy snippet");
+    expect(prompt).not.toContain("Saldo terpotong.");
   });
 
   test("falls back when AI is disabled or returns invalid content", async () => {
@@ -108,6 +172,7 @@ describe("quick response preview service", () => {
         agent,
       ),
     ).resolves.toEqual({
+      ...emptyContext,
       suggestionSource: "fallback",
       suggestions: fallbackSuggestions,
     });
@@ -117,6 +182,7 @@ describe("quick response preview service", () => {
         agent,
       ),
     ).resolves.toEqual({
+      ...emptyContext,
       suggestionSource: "fallback",
       suggestions: fallbackSuggestions,
     });

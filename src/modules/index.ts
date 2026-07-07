@@ -6,6 +6,7 @@ export * as auth from "./auth";
 export * as complaints from "./complaints";
 export * as dashboard from "./dashboard";
 export * as documents from "./documents";
+export * as embeddings from "./embeddings";
 export * as quickResponses from "./quick-responses";
 export * as tickets from "./tickets";
 export * as users from "./users";

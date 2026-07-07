@@ -17,7 +17,11 @@
     "db:reset:seed": "bun run db:reset:migrate && bun run db:seed",
     "db:seed": "bun run src/db/seed/index.ts",
     "db:seed:users": "bun run src/db/seed/index.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "embed:references": "bun run scripts/embed-references.ts",
+    "embed:resolved-cases": "bun run scripts/embed-resolved-cases.ts",
+    "smoke:semantic-context": "bun run scripts/smoke-semantic-context.ts",
+    "smoke:pgvector": "bun run scripts/smoke-pgvector-embeddings.ts"
   },
   "dependencies": {
     "@elysia/openapi": "^1.4.15",

@@ -44,6 +44,30 @@ export interface AiConfig {
   timeoutMs: number;
 }
 
+export interface EmbeddingConfig {
+  apiKey?: string;
+  batchSize: number;
+  batchServiceUrl: string;
+  dimension: number;
+  enabled: boolean;
+  healthUrl: string;
+  model: string;
+  serviceUrl: string;
+  timeoutMs: number;
+}
+
+export interface SemanticContextConfig {
+  candidateLimit: number;
+  caseLimit: number;
+  categoryBoost: number;
+  enabled: boolean;
+  minRawSimilarity: number;
+  minScore: number;
+  referenceLimit: number;
+  referenceSourceTypeBoost: number;
+  resolvedCaseRecencyBoost: number;
+}
+
 export interface SupabaseConfig {
   referenceBucket: string;
   referenceMaxFileSizeMb: number;
@@ -60,12 +84,14 @@ export interface AppConfig {
   corsCredentials: boolean;
   corsOrigins: string[];
   database: DatabaseConfig;
+  embedding: EmbeddingConfig;
   host: string;
   logLevel: LogLevel;
   nodeEnv: NodeEnvironment;
   openApi: OpenApiConfig;
   port: number;
   redis: RedisConfig;
+  semanticContext: SemanticContextConfig;
   supabase: SupabaseConfig;
 }
 
@@ -231,10 +257,27 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
     "REDIS_ENABLED",
   );
   const aiEnabled = readBoolean(source.AI_ENABLED, false, "AI_ENABLED");
+  const embeddingEnabled = readBoolean(
+    source.EMBEDDING_ENABLED,
+    false,
+    "EMBEDDING_ENABLED",
+  );
   const redisUrl = readString(source.REDIS_URL, "redis://localhost:6379");
   const aiChatCompletionsUrl = readString(
     source.AI_CHAT_COMPLETIONS_URL ?? source.AI_BASE_URL,
     "http://localhost:20128/v1/chat/completions",
+  );
+  const embeddingServiceUrl = readString(
+    source.EMBEDDING_SERVICE_URL,
+    "https://fadq-access-embedding.hf.space/embed",
+  );
+  const embeddingBatchServiceUrl = readString(
+    source.EMBEDDING_BATCH_SERVICE_URL,
+    "https://fadq-access-embedding.hf.space/embed/batch",
+  );
+  const embeddingHealthUrl = readString(
+    source.EMBEDDING_HEALTH_URL,
+    "https://fadq-access-embedding.hf.space/health",
   );
   const openApiPath = readHttpPath(
     source.OPENAPI_PATH,
@@ -249,6 +292,12 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
   if (aiEnabled && !aiChatCompletionsUrl) {
     throw new Error(
       "AI_CHAT_COMPLETIONS_URL is required when AI_ENABLED is true",
+    );
+  }
+
+  if (embeddingEnabled && !source.EMBEDDING_API_KEY?.trim()) {
+    throw new Error(
+      "EMBEDDING_API_KEY is required when EMBEDDING_ENABLED is true",
     );
   }
 
@@ -384,6 +433,40 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
         "postgres://postgres:postgres@localhost:5432/access",
       ),
     },
+    embedding: {
+      ...(source.EMBEDDING_API_KEY?.trim()
+        ? { apiKey: source.EMBEDDING_API_KEY.trim() }
+        : {}),
+      batchServiceUrl: embeddingBatchServiceUrl,
+      batchSize: readInteger(
+        source.EMBEDDING_BATCH_SIZE,
+        16,
+        "EMBEDDING_BATCH_SIZE",
+        1,
+        128,
+      ),
+      dimension: readInteger(
+        source.EMBEDDING_DIMENSION,
+        384,
+        "EMBEDDING_DIMENSION",
+        1,
+        4096,
+      ),
+      enabled: embeddingEnabled,
+      healthUrl: embeddingHealthUrl,
+      model: readString(
+        source.EMBEDDING_MODEL,
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      ),
+      serviceUrl: embeddingServiceUrl,
+      timeoutMs: readInteger(
+        source.EMBEDDING_TIMEOUT_MS,
+        10_000,
+        "EMBEDDING_TIMEOUT_MS",
+        100,
+        120_000,
+      ),
+    },
     host: readString(source.HOST, "0.0.0.0"),
     logLevel: readEnum(
       source.LOG_LEVEL,
@@ -405,6 +488,69 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
     redis: {
       enabled: redisEnabled,
       url: redisUrl,
+    },
+    semanticContext: {
+      candidateLimit: readInteger(
+        source.SEMANTIC_CANDIDATE_LIMIT,
+        10,
+        "SEMANTIC_CANDIDATE_LIMIT",
+        1,
+        100,
+      ),
+      caseLimit: readInteger(
+        source.SEMANTIC_CASE_LIMIT,
+        3,
+        "SEMANTIC_CASE_LIMIT",
+        0,
+        20,
+      ),
+      categoryBoost: readNumber(
+        source.SEMANTIC_CATEGORY_BOOST,
+        2,
+        "SEMANTIC_CATEGORY_BOOST",
+        0,
+        10,
+      ),
+      enabled: readBoolean(
+        source.SEMANTIC_CONTEXT_ENABLED,
+        true,
+        "SEMANTIC_CONTEXT_ENABLED",
+      ),
+      minRawSimilarity: readNumber(
+        source.SEMANTIC_MIN_RAW_SIMILARITY,
+        0.5,
+        "SEMANTIC_MIN_RAW_SIMILARITY",
+        -1,
+        1,
+      ),
+      minScore: readNumber(
+        source.SEMANTIC_MIN_SCORE,
+        8.5,
+        "SEMANTIC_MIN_SCORE",
+        0,
+        50,
+      ),
+      referenceLimit: readInteger(
+        source.SEMANTIC_REFERENCE_LIMIT,
+        3,
+        "SEMANTIC_REFERENCE_LIMIT",
+        0,
+        20,
+      ),
+      referenceSourceTypeBoost: readNumber(
+        source.SEMANTIC_REFERENCE_SOURCE_TYPE_BOOST,
+        0.5,
+        "SEMANTIC_REFERENCE_SOURCE_TYPE_BOOST",
+        0,
+        10,
+      ),
+      resolvedCaseRecencyBoost: readNumber(
+        source.SEMANTIC_RESOLVED_CASE_RECENCY_BOOST,
+        0.3,
+        "SEMANTIC_RESOLVED_CASE_RECENCY_BOOST",
+        0,
+        10,
+      ),
     },
     supabase: {
       ...(source.SUPABASE_URL?.trim()

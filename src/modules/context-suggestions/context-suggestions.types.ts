@@ -12,7 +12,6 @@ export interface RelevantReferencePreview {
   sourceType: string;
   snippet: string;
   fileName: string | null;
-  score: number;
 }
 
 export interface SimilarResolvedCasePreview {

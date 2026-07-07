@@ -5,6 +5,10 @@ import type { AiConfig } from "../../config/env";
 import type { AiChatClient } from "../../integrations/ai/ai.types";
 import { ForbiddenError, ValidationError } from "../../shared/errors";
 import type { AuthUser } from "../auth/auth.types";
+import {
+  emptyContextSuggestions,
+  type ContextSuggestionsService,
+} from "../context-suggestions";
 import type {
   HeatSuggestions,
   QuickResponsePreviewInput,
@@ -207,6 +211,7 @@ const buildUserPrompt = (input: QuickResponsePreviewInput): string => {
 };
 
 const fallbackResult = (): QuickResponsePreviewResult => ({
+  ...emptyContextSuggestions(),
   suggestionSource: "fallback",
   suggestions: {
     hear: [...fallbackSuggestions.hear],
@@ -216,9 +221,35 @@ const fallbackResult = (): QuickResponsePreviewResult => ({
   },
 });
 
+const withContext = async (
+  result: QuickResponsePreviewResult,
+  contextService: ContextSuggestionsService | undefined,
+  input: QuickResponsePreviewInput,
+): Promise<QuickResponsePreviewResult> => {
+  if (!contextService) {
+    return result;
+  }
+
+  try {
+    const context = await contextService.getContextSuggestions({
+      category: input.category,
+      complaintText: input.complaintText,
+    });
+
+    return {
+      ...result,
+      relevantReferences: context.relevantReferences,
+      similarResolvedCases: context.similarResolvedCases,
+    };
+  } catch {
+    return result;
+  }
+};
+
 export const createQuickResponsePreviewService = (
   config: AiConfig,
   aiClient: AiChatClient,
+  contextService?: ContextSuggestionsService,
 ): QuickResponsePreviewService => ({
   async generatePreview(input, currentUser) {
     assertCanPreviewQuickResponse(currentUser);
@@ -233,7 +264,10 @@ export const createQuickResponsePreviewService = (
     }
 
     if (!config.enabled || config.provider === "mock") {
-      return fallbackResult();
+      return withContext(fallbackResult(), contextService, {
+        ...input,
+        complaintText,
+      });
     }
 
     try {
@@ -252,15 +286,22 @@ export const createQuickResponsePreviewService = (
       const parsedSuggestions = parseHeatSuggestionsContent(content);
 
       if (!hasUsableSuggestion(parsedSuggestions)) {
-        return fallbackResult();
+        return withContext(fallbackResult(), contextService, {
+          ...input,
+          complaintText,
+        });
       }
 
-      return {
+      return withContext({
+        ...emptyContextSuggestions(),
         suggestionSource: "ai",
         suggestions: normalizeHeatSuggestions(parsedSuggestions),
-      };
+      }, contextService, { ...input, complaintText });
     } catch {
-      return fallbackResult();
+      return withContext(fallbackResult(), contextService, {
+        ...input,
+        complaintText,
+      });
     }
   },
 });

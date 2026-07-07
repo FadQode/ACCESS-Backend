@@ -8,6 +8,22 @@ const suggestionArraySchema = t.Array(t.String(), {
   maxItems: 3,
 });
 
+const relevantReferenceSchema = t.Object({
+  id: t.String(),
+  title: t.String(),
+  category: t.Union([complaintCategorySchema, t.Null()]),
+  sourceType: t.String(),
+  snippet: t.String(),
+  fileName: t.Union([t.String(), t.Null()]),
+});
+
+const similarResolvedCaseSchema = t.Object({
+  category: complaintCategorySchema,
+  complaintTextPreview: t.String(),
+  finalResponsePreview: t.String(),
+  resolvedAt: t.Union([t.String(), t.Null()]),
+});
+
 export const quickResponsePreviewBodySchema = t.Object({
   complaintText: t.String({ minLength: 5, maxLength: 20_000 }),
   category: t.Optional(complaintCategorySchema),
@@ -26,5 +42,7 @@ export const quickResponsePreviewResponseSchema = t.Object({
       apologize: suggestionArraySchema,
       takeAction: suggestionArraySchema,
     }),
+    relevantReferences: t.Array(relevantReferenceSchema),
+    similarResolvedCases: t.Array(similarResolvedCaseSchema),
   }),
 });

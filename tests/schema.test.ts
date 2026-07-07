@@ -7,6 +7,8 @@ import {
   agentPerformance,
   auditLogs,
   complaints,
+  referenceSourceEmbeddings,
+  resolvedCaseEmbeddings,
   actionRequestReferences,
   quickResponseReferences,
   quickResponseSessions,
@@ -33,6 +35,8 @@ const plannedTables = [
   ticketEvents,
   auditLogs,
   agentPerformance,
+  referenceSourceEmbeddings,
+  resolvedCaseEmbeddings,
 ] as const;
 
 const postponedTables = [
@@ -76,6 +80,8 @@ describe("database schema", () => {
       "ticket_events",
       "audit_logs",
       "agent_performance",
+      "reference_source_embeddings",
+      "resolved_case_embeddings",
     ]);
   });
 
@@ -117,6 +123,12 @@ describe("database schema", () => {
     expect(uniqueNamesFor(agentPerformance)).toContain(
       "agent_performance_agent_period_unique",
     );
+    expect(uniqueNamesFor(referenceSourceEmbeddings)).toContain(
+      "reference_source_embeddings_source_model_version_unique",
+    );
+    expect(uniqueNamesFor(resolvedCaseEmbeddings)).toContain(
+      "resolved_case_embeddings_case_session_model_version_unique",
+    );
   });
 
   test("indexes complaint creation time for paginated reads", () => {
@@ -148,5 +160,7 @@ describe("database schema", () => {
     expect(configFor(referenceSources).foreignKeys).toHaveLength(1);
     expect(configFor(quickResponseReferences).foreignKeys).toHaveLength(3);
     expect(configFor(actionRequestReferences).foreignKeys).toHaveLength(3);
+    expect(configFor(referenceSourceEmbeddings).foreignKeys).toHaveLength(1);
+    expect(configFor(resolvedCaseEmbeddings).foreignKeys).toHaveLength(2);
   });
 });
