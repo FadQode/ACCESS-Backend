@@ -105,7 +105,23 @@ Petunjuk kategori:
 - App Error: akui kendala teknis; jangan menyalahkan perangkat atau jaringan customer; minta versi aplikasi/perangkat/screenshot jika perlu.
 - Lost Item / Barang tertinggal: akui kekhawatiran customer; teruskan ke tim/stasiun terkait; jangan menjamin barang ditemukan.
 
-JSON format:
+Aturan output JSON wajib:
+- WAJIB mengembalikan JSON valid saja.
+- WAJIB mengikuti template JSON persis seperti yang diminta.
+- WAJIB memakai key berikut dan hanya key berikut: "hear", "empathize", "apologize", "takeAction".
+- WAJIB mengisi setiap key dengan array berisi tepat 3 string.
+- WAJIB total ada 12 string: 3 hear, 3 empathize, 3 apologize, dan 3 takeAction.
+- WAJIB semua value berupa string, bukan object, bukan number, bukan boolean, dan bukan null.
+- WAJIB memakai double quote untuk semua key dan string.
+- WAJIB menggunakan Bahasa Indonesia pada semua isi string.
+- WAJIB memastikan JSON bisa langsung diparse oleh JSON.parse.
+- DILARANG menambahkan markdown, code fence, bullet, nomor urut, komentar, pembuka, penutup, atau penjelasan di luar JSON.
+- DILARANG menambahkan key lain seperti "finalResponse", "confidence", "requiresManagerAction", "reasoning", "notes", atau "metadata".
+- DILARANG mengembalikan teks seperti "Berikut JSON-nya:" sebelum JSON.
+- DILARANG mengembalikan teks apa pun setelah JSON.
+- Jika ragu, tetap jawab hanya dengan JSON sesuai template.
+
+Template JSON yang wajib digunakan:
 {
   "hear": ["...", "...", "..."],
   "empathize": ["...", "...", "..."],
@@ -273,6 +289,13 @@ const buildUserPrompt = (input: QuickResponsePreviewInput): string => {
     `Category:\n${category}`,
     `Response tone:\n${responseTone}`,
     `Response target:\n${responseTarget}`,
+    [
+      "Instruksi output wajib:",
+      "Jawab hanya dengan JSON valid sesuai template.",
+      'Gunakan hanya key "hear", "empathize", "apologize", dan "takeAction".',
+      "Setiap key wajib berisi tepat 3 string Bahasa Indonesia.",
+      "Jangan tambahkan markdown, penjelasan, pembuka, penutup, atau key lain.",
+    ].join("\n"),
   ].join("\n\n");
 };
 
