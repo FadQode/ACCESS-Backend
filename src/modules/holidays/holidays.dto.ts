@@ -41,6 +41,23 @@ export const calendarQuerySchema = t.Object({
   end: isoDateSchema,
 });
 
+export const holidaySyncBodySchema = t.Object({
+  year: t.Integer({ minimum: 1900, maximum: 2999 }),
+});
+
+export const holidaySyncResponseSchema = t.Object({
+  success: t.Literal(true),
+  message: t.String(),
+  data: t.Object({
+    year: t.Integer(),
+    fetched: t.Integer({ minimum: 0 }),
+    created: t.Integer({ minimum: 0 }),
+    updated: t.Integer({ minimum: 0 }),
+    unchanged: t.Integer({ minimum: 0 }),
+    failed: t.Integer({ minimum: 0 }),
+  }),
+});
+
 const holidayItemSchema = t.Object({
   id: t.String({ format: "uuid" }),
   name: t.String(),

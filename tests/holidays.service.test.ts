@@ -231,13 +231,17 @@ const fakeRepository = (
     Object.assign(found, patch);
     return found;
   },
-  async deleteHoliday(id) {
-    const index = holidays.findIndex((h) => h.id === id);
-    if (index === -1) return false;
-    holidays.splice(index, 1);
-    return true;
-  },
-});
+    async deleteHoliday(id) {
+      const index = holidays.findIndex((h) => h.id === id);
+      if (index === -1) return false;
+      holidays.splice(index, 1);
+      return true;
+    },
+    async upsertHolidays() {
+      // not exercised by holidays.service tests
+      return [];
+    },
+  });
 
 describe("holidays service calendar", () => {
   test("monitoring window reaches into range even when holiday date is outside it", async () => {

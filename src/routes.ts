@@ -20,6 +20,8 @@ import { createHealthRoutes } from "./modules/health/health.routes";
 import { createHolidayRoutes } from "./modules/holidays/holidays.routes";
 import { createHolidaysRepository } from "./modules/holidays/holidays.repository";
 import { createHolidaysService } from "./modules/holidays/holidays.service";
+import { createHolidaySyncService } from "./modules/holidays/holidays.sync";
+import { createApiIndonesiaHolidayProvider } from "./modules/holidays/providers/api-indonesia.provider";
 import { createAiChatClient } from "./integrations/ai/ai.client";
 import { createEmbeddingClient } from "./integrations/embeddings/embedding.client";
 import { createSemanticContextRepository } from "./modules/context-suggestions/semantic-context.repository";
@@ -91,9 +93,15 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     createDashboardRepository(db),
   );
   const reportsService = createReportsService(createReportsRepository(db));
-  const holidaysService = createHolidaysService(
-    createHolidaysRepository(db),
-  );
+  const holidaysRepository = createHolidaysRepository(db);
+  const holidaysService = createHolidaysService(holidaysRepository);
+  const holidaySyncService = createHolidaySyncService({
+    transactionManager,
+    holidaysRepository,
+    holidayProvider: createApiIndonesiaHolidayProvider({
+      config: config.apiIndonesia,
+    }),
+  });
   const semanticContextService = createSemanticContextService(
     config.semanticContext,
     config.embedding,
@@ -129,7 +137,13 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     .use(createDashboardRoutes(config, { authService, dashboardService }))
     .use(createReportRoutes(config, { authService, reportsService }))
     .use(createTicketRoutes(config, { authService, ticketsService }))
-    .use(createHolidayRoutes(config, { authService, holidaysService }))
+    .use(
+      createHolidayRoutes(config, {
+        authService,
+        holidaysService,
+        holidaySyncService,
+      }),
+    )
     .use(
       createActionRequestRoutes(config, {
         authService,

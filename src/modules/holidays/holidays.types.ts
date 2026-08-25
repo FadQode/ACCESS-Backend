@@ -81,3 +81,37 @@ export interface UpdateHolidayInput {
   source?: HolidaySource;
   sourceReference?: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// External ingestion
+// ---------------------------------------------------------------------------
+
+/**
+ * Raw record from an external holiday provider, pre-normalization.
+ * Fields stay permissive on purpose: the mapper owns strict validation.
+ */
+export interface ExternalHoliday {
+  id: string;
+  date: string;
+  name: string;
+  type?: string | null;
+  is_joint_leave?: number | boolean | string | null;
+  description?: string | null;
+  source?: string | null;
+  year?: number | string | null;
+  is_active?: boolean | number | string | null;
+}
+
+/** Boundary every holiday source must implement. Replaceable adapter. */
+export interface HolidayProvider {
+  fetchByYear(year: number): Promise<ExternalHoliday[]>;
+}
+
+export interface HolidaySyncSummary {
+  year: number;
+  fetched: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  failed: number;
+}

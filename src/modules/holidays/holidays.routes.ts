@@ -6,9 +6,13 @@ import {
   createAccessTokenPlugin,
   requireAuth,
 } from "../../plugins/auth.plugin";
+import {
+  ServiceUnavailableError,
+} from "../../shared/errors";
 import { apiErrorResponseSchema } from "../../shared/http/schema";
 import { successResponse } from "../../shared/http/response";
 import type { AuthService } from "../auth/auth.service";
+import type { HolidaySyncService } from "./holidays.sync";
 import type { HolidaysService } from "./holidays.service";
 import {
   calendarQuerySchema,
@@ -20,12 +24,15 @@ import {
   holidayOverviewResponseSchema,
   holidayParamsSchema,
   holidayResponseSchema,
+  holidaySyncBodySchema,
+  holidaySyncResponseSchema,
   updateHolidayBodySchema,
 } from "./holidays.dto";
 
 export interface HolidayRoutesDependencies {
   authService: AuthService;
   holidaysService: HolidaysService;
+  holidaySyncService: HolidaySyncService;
 }
 
 const protectedErrors = {
@@ -35,6 +42,11 @@ const protectedErrors = {
   404: apiErrorResponseSchema,
   409: apiErrorResponseSchema,
   422: apiErrorResponseSchema,
+};
+
+const syncProtectedErrors = {
+  ...protectedErrors,
+  503: apiErrorResponseSchema,
 };
 
 const toHolidayItem = (holiday: Holiday) => ({
@@ -53,7 +65,11 @@ const toHolidayItem = (holiday: Holiday) => ({
 // does not swallow them as an id parameter.
 export const createHolidayRoutes = (
   config: AppConfig,
-  { authService, holidaysService }: HolidayRoutesDependencies,
+  {
+    authService,
+    holidaysService,
+    holidaySyncService,
+  }: HolidayRoutesDependencies,
 ) =>
   new Elysia({ name: "holiday-routes", prefix: "/holidays" })
     .use(createAccessTokenPlugin(config))
@@ -110,6 +126,30 @@ export const createHolidayRoutes = (
         detail: {
           tags: ["Holidays"],
           summary: "Get current holiday status and next monitoring period",
+          security: [{ bearerAuth: [] }],
+        },
+      },
+    )
+    .post(
+      "/sync",
+      async ({ accessToken, headers, body }) => {
+        await requireAuth(headers.authorization, accessToken, authService);
+        if (!config.apiIndonesia.apiKey) {
+          throw new ServiceUnavailableError(
+            "Holiday sync is not configured",
+            "HOLIDAY_SYNC_NOT_CONFIGURED",
+          );
+        }
+        const result = await holidaySyncService.syncYear(body.year);
+        return successResponse(result, "Holiday sync completed");
+      },
+      {
+        body: holidaySyncBodySchema,
+        response: { 200: holidaySyncResponseSchema, ...syncProtectedErrors },
+        detail: {
+          tags: ["Holidays"],
+          summary:
+            "Synchronize holidays for a year from the external provider",
           security: [{ bearerAuth: [] }],
         },
       },

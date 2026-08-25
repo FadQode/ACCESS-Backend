@@ -3,6 +3,12 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 export type CookieSameSite = "strict" | "lax" | "none";
 export type AiProvider = "mock" | "fastapi" | "llm" | "opencode";
 
+export interface ApiIndonesiaConfig {
+  apiKey: string;
+  baseUrl: string;
+  timeoutMs: number;
+}
+
 export interface DatabaseConfig {
   connectTimeoutSeconds: number;
   idleTimeoutSeconds: number;
@@ -79,6 +85,7 @@ export interface SupabaseConfig {
 
 export interface AppConfig {
   ai: AiConfig;
+  apiIndonesia: ApiIndonesiaConfig;
   appName: string;
   appVersion: string;
   auth: AuthConfig;
@@ -346,6 +353,20 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
         20_000,
         "AI_TIMEOUT_MS",
         100,
+        120_000,
+      ),
+    },
+    apiIndonesia: {
+      apiKey: readString(source.API_INDONESIA_API_KEY, ""),
+      baseUrl: readString(
+        source.API_INDONESIA_BASE_URL,
+        "https://use.apiindonesia.id",
+      ),
+      timeoutMs: readInteger(
+        source.API_INDONESIA_TIMEOUT_MS,
+        15_000,
+        "API_INDONESIA_TIMEOUT_MS",
+        1_000,
         120_000,
       ),
     },

@@ -1,7 +1,7 @@
-import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 
-import type { Database } from "../../db";
-import { holidays, type Holiday } from "../../db/schema";
+import type { Database, DatabaseExecutor } from "../../db";
+import { holidays, type Holiday, type NewHoliday } from "../../db/schema";
 import type {
   CreateHolidayInput,
   HolidayFilters,
@@ -19,6 +19,10 @@ export interface HolidaysRepository {
   createHoliday(input: CreateHolidayInput): Promise<Holiday>;
   updateHoliday(id: string, patch: UpdateHolidayInput): Promise<Holiday | null>;
   deleteHoliday(id: string): Promise<boolean>;
+  upsertHolidays(
+    rows: NewHoliday[],
+    executor?: DatabaseExecutor,
+  ): Promise<Holiday[]>;
 }
 
 export const createHolidaysRepository = (
@@ -84,5 +88,23 @@ export const createHolidaysRepository = (
       .where(eq(holidays.id, id))
       .returning({ id: holidays.id });
     return Boolean(holiday);
+  },
+
+  async upsertHolidays(rows, executor = db) {
+    if (rows.length === 0) return [];
+    return executor
+      .insert(holidays)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: [holidays.date, holidays.source],
+        set: {
+          name: sql`excluded.name`,
+          category: sql`excluded.category`,
+          isJointLeave: sql`excluded.is_joint_leave`,
+          sourceReference: sql`excluded.source_reference`,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
   },
 });
