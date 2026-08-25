@@ -17,6 +17,9 @@ import { createDashboardRepository } from "./modules/dashboard/dashboard.reposit
 import { createDashboardRoutes } from "./modules/dashboard/dashboard.routes";
 import { createDashboardService } from "./modules/dashboard/dashboard.service";
 import { createHealthRoutes } from "./modules/health/health.routes";
+import { createHolidayRoutes } from "./modules/holidays/holidays.routes";
+import { createHolidaysRepository } from "./modules/holidays/holidays.repository";
+import { createHolidaysService } from "./modules/holidays/holidays.service";
 import { createAiChatClient } from "./integrations/ai/ai.client";
 import { createEmbeddingClient } from "./integrations/embeddings/embedding.client";
 import { createSemanticContextRepository } from "./modules/context-suggestions/semantic-context.repository";
@@ -88,6 +91,9 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     createDashboardRepository(db),
   );
   const reportsService = createReportsService(createReportsRepository(db));
+  const holidaysService = createHolidaysService(
+    createHolidaysRepository(db),
+  );
   const semanticContextService = createSemanticContextService(
     config.semanticContext,
     config.embedding,
@@ -123,6 +129,7 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     .use(createDashboardRoutes(config, { authService, dashboardService }))
     .use(createReportRoutes(config, { authService, reportsService }))
     .use(createTicketRoutes(config, { authService, ticketsService }))
+    .use(createHolidayRoutes(config, { authService, holidaysService }))
     .use(
       createActionRequestRoutes(config, {
         authService,

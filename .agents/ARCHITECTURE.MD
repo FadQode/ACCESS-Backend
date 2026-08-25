@@ -142,6 +142,7 @@ modules/
   audit/
   agent-performance/
   ai/
+  holidays/
 ```
 
 Each module owns its related files:
@@ -214,6 +215,7 @@ src/
       action-requests.seed.ts
       ticket-events.seed.ts
       agent-performance.seed.ts
+      holidays.seed.ts
 
   plugins/
     auth.plugin.ts
@@ -243,6 +245,7 @@ src/
     audit/
     agent-performance/
     ai/
+    holidays/
 ```
 
 Important rule:
@@ -878,6 +881,30 @@ AI failure must not break complaint, quick response, ticket, or manager action w
 
 ---
 
+## 10.12 Holidays Module
+
+Purpose:
+
+```txt
+store official holiday facts (holiday + joint leave)
+derive calendar conditions (weekend, long weekend, bridge day)
+compute monitoring windows around major holiday categories
+serve frontend calendar and holiday overview
+```
+
+Holidays stores only official facts.
+
+Monitoring windows are application constants, not database data.
+Long weekends and bridge days are derived at read time, never stored.
+
+Important rule:
+
+```txt
+CRUD the facts. Calculate the conditions.
+```
+
+---
+
 ## 11. Database Architecture
 
 Database schemas live in:
@@ -899,6 +926,7 @@ ticket-events.schema.ts
 audit-logs.schema.ts
 agent-performance.schema.ts
 relations.ts
+holidays.schema.ts
 ```
 
 Database schema ownership:
@@ -935,6 +963,9 @@ audit-logs.schema.ts
 
 agent-performance.schema.ts
   agent_performance
+
+holidays.schema.ts
+  holidays
 ```
 
 Important:
@@ -1237,6 +1268,7 @@ Main route groups:
 /action-requests
 /dashboard
 /agent-performance
+/holidays
 ```
 
 Public route groups may be added later:

@@ -3,6 +3,7 @@ import { createDatabase } from "../index";
 import { seedActionRequests } from "./action-requests.seed";
 import { seedAgentPerformance } from "./agent-performance.seed";
 import { seedComplaints } from "./complaints.seed";
+import { seedHolidays } from "./holidays.seed";
 import { seedQuickResponseSessions } from "./quick-response.seed";
 import { seedReferences } from "./references.seed";
 import { seedTicketEvents } from "./ticket-events.seed";
@@ -40,6 +41,9 @@ export const runSeeds = async (): Promise<void> => {
 
     const agentPerformanceCount = await seedAgentPerformance(database.db);
     console.log(`Seeded ${agentPerformanceCount} performance snapshots`);
+
+    const holidayCount = await seedHolidays(database.db);
+    console.log(`Seeded ${holidayCount} holidays`);
   } finally {
     await database.close();
   }

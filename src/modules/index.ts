@@ -7,6 +7,7 @@ export * as complaints from "./complaints";
 export * as dashboard from "./dashboard";
 export * as documents from "./documents";
 export * as embeddings from "./embeddings";
+export * as holidays from "./holidays";
 export * as quickResponses from "./quick-responses";
 export * as tickets from "./tickets";
 export * as users from "./users";
