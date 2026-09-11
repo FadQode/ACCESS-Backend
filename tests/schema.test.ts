@@ -15,6 +15,7 @@ import {
   referenceSources,
   referenceSourceTags,
   referenceTags,
+  socialComplaints,
   ticketEvents,
   tickets,
   users,
@@ -37,6 +38,7 @@ const plannedTables = [
   agentPerformance,
   referenceSourceEmbeddings,
   resolvedCaseEmbeddings,
+  socialComplaints,
 ] as const;
 
 const postponedTables = [
@@ -82,6 +84,7 @@ describe("database schema", () => {
       "agent_performance",
       "reference_source_embeddings",
       "resolved_case_embeddings",
+      "social_complaints",
     ]);
   });
 
@@ -128,6 +131,9 @@ describe("database schema", () => {
     );
     expect(uniqueNamesFor(resolvedCaseEmbeddings)).toContain(
       "resolved_case_embeddings_case_session_model_version_unique",
+    );
+    expect(uniqueNamesFor(socialComplaints)).toContain(
+      "social_complaints_source_reference_unique",
     );
   });
 

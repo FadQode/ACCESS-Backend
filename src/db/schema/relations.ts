@@ -21,6 +21,7 @@ import {
 } from "./references.schema";
 import { ticketEvents } from "./ticket-events.schema";
 import { tickets } from "./tickets.schema";
+import { socialComplaints } from "./social-complaints.schema";
 import { users } from "./users.schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -55,7 +56,18 @@ export const complaintsRelations = relations(complaints, ({ many, one }) => ({
   quickResponseSessions: many(quickResponseSessions),
   actionRequestLinks: many(actionRequestComplaints),
   resolvedCaseEmbeddings: many(resolvedCaseEmbeddings),
+  socialComplaint: one(socialComplaints, {
+    fields: [complaints.socialComplaintId],
+    references: [socialComplaints.id],
+  }),
 }));
+
+export const socialComplaintsRelations = relations(
+  socialComplaints,
+  ({ many }) => ({
+    complaints: many(complaints),
+  }),
+);
 
 export const ticketsRelations = relations(tickets, ({ many, one }) => ({
   complaint: one(complaints, {

@@ -20,6 +20,7 @@ export interface SaveQuickResponseInput {
     complainerName?: string | null;
     complainerContact?: string | null;
     category: ComplaintCategory;
+    socialComplaintId?: string | null;
   };
   response: {
     responseTarget: ResponseTarget;

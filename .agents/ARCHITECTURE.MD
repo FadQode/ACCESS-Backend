@@ -203,6 +203,7 @@ src/
       ticket-events.schema.ts
       audit-logs.schema.ts
       agent-performance.schema.ts
+      social-complaints.schema.ts
       relations.ts
 
     seed/
@@ -216,12 +217,19 @@ src/
       ticket-events.seed.ts
       agent-performance.seed.ts
       holidays.seed.ts
+      social-complaints.seed.ts
 
   plugins/
     auth.plugin.ts
     error.plugin.ts
     logger.plugin.ts
     response.plugin.ts
+
+  integrations/
+    ai/
+    apify/
+    embeddings/
+    supabase/
 
   shared/
     constants/
@@ -246,6 +254,7 @@ src/
     agent-performance/
     ai/
     holidays/
+    social-complaints/
 ```
 
 Important rule:
@@ -905,6 +914,40 @@ CRUD the facts. Calculate the conditions.
 
 ---
 
+## 10.13 Social Complaints Module
+
+Purpose:
+
+```txt
+external social-media ingestion/source layer
+fetch social content through Apify
+normalize provider responses
+store, deduplicate, and paginate ingested records
+expose newest social complaints to the frontend
+```
+
+Important rule:
+
+```txt
+social_complaints is an ingestion/source layer.
+It is not an alternative representation of complaints.
+A record becomes an ACCESS complaint only through the human Quick Response workflow.
+```
+
+The module owns the provider contract (`SocialMediaProvider`) and the Apify-backed
+providers (`GooglePlayProvider`, `FacebookProvider`, `XProvider`); the raw HTTP transport
+belongs to `integrations/apify/`.
+
+Ingestion is insert-only: re-syncing an already-seen `(source, source_reference)` never
+rewrites the stored row.
+
+`POST /social-complaints/sync` is admin-only because it spends Apify credits. An
+in-process scheduler (`social-media-sync.scheduler.ts`, started from `server.ts`)
+can run the same `SocialMediaSyncService` hourly; it is off unless
+`SOCIAL_SYNC_SCHEDULER_ENABLED=true`. The scheduler never owns ingestion logic.
+
+---
+
 ## 11. Database Architecture
 
 Database schemas live in:
@@ -927,6 +970,7 @@ audit-logs.schema.ts
 agent-performance.schema.ts
 relations.ts
 holidays.schema.ts
+social-complaints.schema.ts
 ```
 
 Database schema ownership:
@@ -966,6 +1010,9 @@ agent-performance.schema.ts
 
 holidays.schema.ts
   holidays
+
+social-complaints.schema.ts
+  social_complaints
 ```
 
 Important:
@@ -1269,6 +1316,7 @@ Main route groups:
 /dashboard
 /agent-performance
 /holidays
+/social-complaints
 ```
 
 Public route groups may be added later:

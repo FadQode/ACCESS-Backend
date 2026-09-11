@@ -37,6 +37,21 @@ export interface OpenApiConfig {
   specPath: string;
 }
 
+export interface ApifyConfig {
+  apiToken?: string;
+  baseUrl: string;
+  facebookActorId: string;
+  facebookMaxPosts: number;
+  facebookPageUrl: string;
+  googlePlayActorId: string;
+  googlePlayAppId: string;
+  maxItems: number;
+  pollIntervalMs: number;
+  timeoutMs: number;
+  xActorId: string;
+  xSearchTerms: string;
+}
+
 export interface AiConfig {
   apiKey?: string;
   chatCompletionsUrl: string;
@@ -75,6 +90,15 @@ export interface SemanticContextConfig {
   resolvedCaseRecencyBoost: number;
 }
 
+export type SocialSyncSource = "google_play" | "facebook" | "x";
+
+export interface SocialSyncConfig {
+  enabled: boolean;
+  intervalMs: number;
+  runOnStart: boolean;
+  sources: SocialSyncSource[];
+}
+
 export interface SupabaseConfig {
   referenceBucket: string;
   referenceMaxFileSizeMb: number;
@@ -85,6 +109,7 @@ export interface SupabaseConfig {
 
 export interface AppConfig {
   ai: AiConfig;
+  apify: ApifyConfig;
   apiIndonesia: ApiIndonesiaConfig;
   appName: string;
   appVersion: string;
@@ -100,6 +125,7 @@ export interface AppConfig {
   port: number;
   redis: RedisConfig;
   semanticContext: SemanticContextConfig;
+  socialSync: SocialSyncConfig;
   supabase: SupabaseConfig;
 }
 
@@ -126,6 +152,12 @@ const allowedAiProviders = new Set<AiProvider>([
   "fastapi",
   "llm",
   "opencode",
+]);
+
+const allowedSocialSyncSources = new Set<SocialSyncSource>([
+  "google_play",
+  "facebook",
+  "x",
 ]);
 
 const readString = (
@@ -211,6 +243,30 @@ const readBoolean = (
   throw new Error(`${name} must be either true or false`);
 };
 
+const readSocialSyncSources = (
+  value: string | undefined,
+): SocialSyncSource[] => {
+  const sources = readString(value, "google_play,facebook,x")
+    .split(",")
+    .map((source) => source.trim())
+    .filter(Boolean);
+
+  if (sources.length === 0) {
+    throw new Error("SOCIAL_SYNC_SOURCES must contain at least one source");
+  }
+
+  return sources.map((source) => {
+    if (!allowedSocialSyncSources.has(source as SocialSyncSource)) {
+      throw new Error(
+        `SOCIAL_SYNC_SOURCES entries must be one of: ${Array.from(
+          allowedSocialSyncSources,
+        ).join(", ")}`,
+      );
+    }
+    return source as SocialSyncSource;
+  });
+};
+
 const readCorsOrigins = (value: string | undefined): string[] => {
   const origins = readString(value, "http://localhost:3000")
     .split(",")
@@ -293,6 +349,25 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
     "OPENAPI_PATH",
   );
 
+  const socialSyncEnabled = readBoolean(
+    source.SOCIAL_SYNC_SCHEDULER_ENABLED,
+    false,
+    "SOCIAL_SYNC_SCHEDULER_ENABLED",
+  );
+  const socialSyncIntervalMs = readInteger(
+    source.SOCIAL_SYNC_INTERVAL_MS,
+    3_600_000,
+    "SOCIAL_SYNC_INTERVAL_MS",
+    60_000,
+    86_400_000,
+  );
+  const socialSyncRunOnStart = readBoolean(
+    source.SOCIAL_SYNC_RUN_ON_START,
+    false,
+    "SOCIAL_SYNC_RUN_ON_START",
+  );
+  const socialSyncSources = readSocialSyncSources(source.SOCIAL_SYNC_SOURCES);
+
   if (redisEnabled && !redisUrl) {
     throw new Error("REDIS_URL is required when REDIS_ENABLED is true");
   }
@@ -355,6 +430,49 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
         100,
         120_000,
       ),
+    },
+    apify: {
+      ...((source.APIFY_API_TOKEN ?? source.APIFY_TOKEN)?.trim()
+        ? { apiToken: (source.APIFY_API_TOKEN ?? source.APIFY_TOKEN)!.trim() }
+        : {}),
+      baseUrl: readString(
+        source.APIFY_BASE_URL,
+        "https://api.apify.com/v2",
+      ),
+      facebookActorId: readString(source.APIFY_FACEBOOK_ACTOR_ID, ""),
+      facebookMaxPosts: readInteger(
+        source.APIFY_FACEBOOK_MAX_POSTS,
+        10,
+        "APIFY_FACEBOOK_MAX_POSTS",
+        1,
+        200,
+      ),
+      facebookPageUrl: readString(source.APIFY_FACEBOOK_PAGE_URL, ""),
+      googlePlayActorId: readString(source.APIFY_GOOGLE_PLAY_ACTOR_ID, ""),
+      googlePlayAppId: readString(source.APIFY_GOOGLE_PLAY_APP_ID, ""),
+      maxItems: readInteger(
+        source.APIFY_MAX_ITEMS,
+        80,
+        "APIFY_MAX_ITEMS",
+        1,
+        1_000,
+      ),
+      pollIntervalMs: readInteger(
+        source.APIFY_POLL_INTERVAL_MS,
+        2_000,
+        "APIFY_POLL_INTERVAL_MS",
+        250,
+        60_000,
+      ),
+      timeoutMs: readInteger(
+        source.APIFY_TIMEOUT_MS,
+        120_000,
+        "APIFY_TIMEOUT_MS",
+        1_000,
+        300_000,
+      ),
+      xActorId: readString(source.APIFY_X_ACTOR_ID, ""),
+      xSearchTerms: readString(source.APIFY_X_SEARCH_TERMS, "ACCESS"),
     },
     apiIndonesia: {
       apiKey: readString(source.API_INDONESIA_API_KEY, ""),
@@ -580,6 +698,12 @@ export const loadEnv = (source: EnvironmentSource): AppConfig => {
         0,
         10,
       ),
+    },
+    socialSync: {
+      enabled: socialSyncEnabled,
+      intervalMs: socialSyncIntervalMs,
+      runOnStart: socialSyncRunOnStart,
+      sources: socialSyncSources,
     },
     supabase: {
       ...(source.SUPABASE_URL?.trim()

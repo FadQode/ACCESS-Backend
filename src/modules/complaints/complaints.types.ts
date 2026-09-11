@@ -12,6 +12,7 @@ export interface CreateComplaintInput {
   complainerContact?: string | null;
   category: ComplaintCategory;
   complaintText: string;
+  socialComplaintId?: string | null;
   status?: ComplaintStatus;
   resolvedAt?: Date | null;
 }

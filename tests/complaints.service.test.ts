@@ -17,6 +17,7 @@ const complaint: Complaint = {
   complainerContact: null,
   category: "app_update",
   complaintText: "Kereta terlambat dua jam.",
+  socialComplaintId: null,
   status: "submitted",
   submittedAt: now,
   resolvedAt: null,

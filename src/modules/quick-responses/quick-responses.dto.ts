@@ -53,6 +53,9 @@ export const saveQuickResponseBodySchema = t.Object({
     complainerName: optionalNullableString({ maxLength: 160 }),
     complainerContact: optionalNullableString({ maxLength: 255 }),
     category: complaintCategorySchema,
+    socialComplaintId: t.Optional(
+      t.Union([t.String({ format: "uuid" }), t.Null()]),
+    ),
   }),
   response: t.Object({
     responseTarget: responseTargetSchema,

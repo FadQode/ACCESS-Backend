@@ -38,6 +38,8 @@ import { createReferencesService } from "./modules/references/references.service
 import { createReportsRepository } from "./modules/reports/reports.repository";
 import { createReportRoutes } from "./modules/reports/reports.routes";
 import { createReportsService } from "./modules/reports/reports.service";
+import { createSocialComplaintsComposition } from "./modules/social-complaints/social-complaints.composition";
+import { createSocialComplaintRoutes } from "./modules/social-complaints/social-complaints.routes";
 import { createSupabaseStorageService } from "./integrations/supabase/supabase-storage.service";
 import { createTicketRoutes } from "./modules/tickets/tickets.routes";
 import { createTicketsRepository } from "./modules/tickets/tickets.repository";
@@ -76,6 +78,10 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     actionRequestReferencesRepository,
     createQuickResponseReferencesRepository(db),
   );
+  const {
+    service: socialComplaintsService,
+    syncService: socialMediaSyncService,
+  } = createSocialComplaintsComposition(config, db);
   const quickResponsesService = createQuickResponsesService(
     transactionManager,
     complaintsService,
@@ -83,6 +89,7 @@ export const createRoutes = (config: AppConfig, db: Database) => {
     createQuickResponsesRepository(db),
     ticketsService,
     quickResponseReferencesService,
+    socialComplaintsService,
   );
   const referencesService = createReferencesService(
     transactionManager,
@@ -134,6 +141,13 @@ export const createRoutes = (config: AppConfig, db: Database) => {
       }),
     )
     .use(createReferenceRoutes(config, { authService, referencesService }))
+    .use(
+      createSocialComplaintRoutes(config, {
+        authService,
+        socialComplaintsService,
+        socialMediaSyncService,
+      }),
+    )
     .use(createDashboardRoutes(config, { authService, dashboardService }))
     .use(createReportRoutes(config, { authService, reportsService }))
     .use(createTicketRoutes(config, { authService, ticketsService }))

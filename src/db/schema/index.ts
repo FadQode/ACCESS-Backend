@@ -7,6 +7,7 @@ export * from "./holidays.schema";
 export * from "./quick-response.schema";
 export * from "./references.schema";
 export * from "./relations";
+export * from "./social-complaints.schema";
 export * from "./ticket-events.schema";
 export * from "./tickets.schema";
 export * from "./users.schema";

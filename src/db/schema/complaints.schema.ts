@@ -9,6 +9,8 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+import { socialComplaints } from "./social-complaints.schema";
+
 export const complaintSourceEnum = pgEnum("complaint_source", [
   "web_form",
   "twitter",
@@ -53,6 +55,10 @@ export const complaints = pgTable(
     complainerContact: varchar("complainer_contact", { length: 255 }),
     category: complaintCategoryEnum("category").notNull(),
     complaintText: text("complaint_text").notNull(),
+    socialComplaintId: uuid("social_complaint_id").references(
+      () => socialComplaints.id,
+      { onDelete: "set null" },
+    ),
     status: complaintStatusEnum("status").notNull().default("submitted"),
     submittedAt: timestamp("submitted_at", { withTimezone: true })
       .notNull()
@@ -71,6 +77,7 @@ export const complaints = pgTable(
     index("complaints_source_idx").on(table.source),
     index("complaints_category_idx").on(table.category),
     index("complaints_status_idx").on(table.status),
+    index("complaints_social_complaint_id_idx").on(table.socialComplaintId),
     index("complaints_submitted_at_idx").on(table.submittedAt),
     index("complaints_created_at_idx").on(table.createdAt),
   ],

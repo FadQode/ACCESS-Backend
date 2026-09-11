@@ -56,6 +56,7 @@ const complaint: Complaint = {
   complainerContact: null,
   category: "payment",
   complaintText: "Saldo sudah terpotong tapi tiket tidak muncul.",
+  socialComplaintId: null,
   status: "waiting_action",
   submittedAt: now,
   resolvedAt: null,

@@ -50,6 +50,13 @@
       "when": 1787665042262,
       "tag": "0006_slim_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789046516421,
+      "tag": "0007_burly_rick_jones",
+      "breakpoints": true
     }
   ]
 }

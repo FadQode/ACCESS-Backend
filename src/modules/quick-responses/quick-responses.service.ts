@@ -11,6 +11,8 @@ import type { ComplaintsRepository } from "../complaints/complaints.repository";
 import type { ComplaintsService } from "../complaints/complaints.service";
 import type { ComplaintStatus } from "../complaints/complaints.types";
 import type { TicketsService } from "../tickets/tickets.service";
+import { toComplaintSource } from "../social-complaints/social-complaints.util";
+import type { SocialComplaintsService } from "../social-complaints/social-complaints.service";
 import type { QuickResponseReferencesService } from "./quick-response-references.service";
 import type { QuickResponsesRepository } from "./quick-responses.repository";
 import type {
@@ -100,6 +102,18 @@ export interface QuickResponsesService {
   }>;
 }
 
+const defaultSocialComplaintsService: SocialComplaintsService = {
+  async listSocialComplaints() {
+    throw new Error("Social complaints service is not configured");
+  },
+  async getSocialComplaintById() {
+    throw new NotFoundError(
+      "Social complaint not found",
+      "SOCIAL_COMPLAINT_NOT_FOUND",
+    );
+  },
+};
+
 export const createQuickResponsesService = (
   transactionManager: DatabaseTransactionManager,
   complaintsService: ComplaintsService,
@@ -112,6 +126,7 @@ export const createQuickResponsesService = (
     },
     async createReferenceUsage() {},
   },
+  socialComplaintsService: SocialComplaintsService = defaultSocialComplaintsService,
 ): QuickResponsesService => ({
   async saveQuickResponse(input, currentUser) {
     assertCanSaveQuickResponse(currentUser);
@@ -119,9 +134,21 @@ export const createQuickResponsesService = (
 
     return transactionManager.transaction(async (executor) => {
       const status = statusByOutcome[input.response.outcome];
+      const socialComplaint = input.complaint.socialComplaintId
+        ? await socialComplaintsService.getSocialComplaintById(
+            input.complaint.socialComplaintId,
+          )
+        : null;
       const complaint = await complaintsService.createComplaint(
         {
           ...input.complaint,
+          ...(socialComplaint
+            ? {
+                source: toComplaintSource(socialComplaint.source),
+                sourceHandle: socialComplaint.author,
+                sourceUrl: socialComplaint.sourceUrl,
+              }
+            : {}),
           status,
           resolvedAt: status === "resolved" ? new Date() : null,
         },

@@ -6,6 +6,7 @@ import { seedComplaints } from "./complaints.seed";
 import { seedHolidays } from "./holidays.seed";
 import { seedQuickResponseSessions } from "./quick-response.seed";
 import { seedReferences } from "./references.seed";
+import { seedSocialComplaints } from "./social-complaints.seed";
 import { seedTicketEvents } from "./ticket-events.seed";
 import { seedTickets } from "./tickets.seed";
 import { seedUsers } from "./users.seed";
@@ -44,6 +45,9 @@ export const runSeeds = async (): Promise<void> => {
 
     const holidayCount = await seedHolidays(database.db);
     console.log(`Seeded ${holidayCount} holidays`);
+
+    const socialComplaintCount = await seedSocialComplaints(database.db);
+    console.log(`Seeded ${socialComplaintCount} social complaints`);
   } finally {
     await database.close();
   }

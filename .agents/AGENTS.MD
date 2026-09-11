@@ -82,6 +82,7 @@ modules/
   audit/
   agent-performance/
   ai/
+  social-complaints/
 ```
 
 Each module may contain its own route, service, repository, DTO, and entity files.
@@ -136,6 +137,7 @@ src/
       ticket-events.schema.ts
       audit-logs.schema.ts
       agent-performance.schema.ts
+      social-complaints.schema.ts
       relations.ts
     seed/
       index.ts
@@ -443,6 +445,7 @@ The database should follow the current v1 ERD direction:
 ```txt
 USER
 COMPLAINT
+SOCIAL_COMPLAINT
 TICKET
 QUICK_RESPONSE_SESSION
 ACTION_REQUEST
@@ -455,6 +458,10 @@ TICKET_EVENT
 AUDIT_LOG
 AGENT_PERFORMANCE
 ```
+
+`SOCIAL_COMPLAINT` is an ingestion/source layer, not an alternative representation
+of `COMPLAINT`. A record becomes an ACCESS complaint only through the human Quick
+Response workflow.
 
 RAG-related tables should be postponed.
 
@@ -652,6 +659,7 @@ Recommended route groups:
 /api/v1/documents
 /api/v1/dashboard
 /api/v1/agent-performance
+/api/v1/social-complaints
 ```
 
 Public route group:
