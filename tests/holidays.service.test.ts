@@ -4,6 +4,7 @@ import type { Holiday } from "../src/db/schema";
 import {
   ConflictError,
   NotFoundError,
+  ValidationError,
 } from "../src/shared/errors";
 import {
   addDays,
@@ -31,6 +32,8 @@ const holiday = (
   isJointLeave: false,
   source: "skb_3_menteri",
   sourceReference: null,
+  monitoringBefore: null,
+  monitoringAfter: null,
   createdAt: now,
   updatedAt: now,
   ...overrides,
@@ -70,6 +73,7 @@ describe("monitoring periods", () => {
       end: "2027-03-24",
       before: 30,
       after: 10,
+      isOverride: false,
     });
   });
 
@@ -321,5 +325,132 @@ describe("overview", () => {
     expect(overview.currentHoliday).toBeNull();
     expect(overview.next?.holiday.name).toBe("Lebaran");
     expect(overview.next?.monitoring.end).toBe("2027-03-24");
+  });
+});
+
+describe("admin monitoring overrides", () => {
+  test("override replaces the category default window", () => {
+    const withOverride = holiday("2027-03-14", "regular_holiday", {
+      monitoringBefore: 5,
+      monitoringAfter: 3,
+    });
+    const period = calculateMonitoringPeriod(withOverride);
+
+    expect(period).toEqual({
+      start: "2027-03-09",
+      end: "2027-03-17",
+      before: 5,
+      after: 3,
+      isOverride: true,
+    });
+  });
+
+  test("override can add a window to a category that has none", () => {
+    const data = sorted([
+      holiday("2026-05-01", "regular_holiday", {
+        name: "Hari Buruh",
+        monitoringBefore: 2,
+        monitoringAfter: 2,
+      }),
+    ]);
+    const service = createHolidaysService(fakeRepository(data));
+
+    return service.getOverview("2026-04-30").then((overview) => {
+      expect(overview.status).toBe("monitoring");
+      expect(overview.monitoringPeriod?.isOverride).toBe(true);
+      expect(overview.monitoringPeriod?.start).toBe("2026-04-29");
+    });
+  });
+
+  test("override reaches into a calendar range", async () => {
+    const data = sorted([
+      holiday("2027-03-14", "regular_holiday", {
+        name: "Custom",
+        monitoringBefore: 10,
+        monitoringAfter: 10,
+      }),
+    ]);
+    const service = createHolidaysService(fakeRepository(data));
+    const calendar = await service.getCalendar("2027-03-05", "2027-03-05");
+
+    expect(calendar.days[0]?.isMonitoring).toBe(true);
+    expect(calendar.days[0]?.relativeDay).toBe(-9);
+  });
+
+  test("createHoliday accepts a valid override", async () => {
+    const service = createHolidaysService(fakeRepository([]));
+    const created = await service.createHoliday({
+      name: "Custom",
+      date: "2027-05-01",
+      category: "regular_holiday",
+      source: "manual",
+      monitoringBefore: 4,
+      monitoringAfter: 4,
+    });
+
+    expect(created.monitoringBefore).toBe(4);
+    expect(created.monitoringAfter).toBe(4);
+  });
+
+  test("createHoliday rejects setting only one side", async () => {
+    const service = createHolidaysService(fakeRepository([]));
+
+    await expect(
+      service.createHoliday({
+        name: "Custom",
+        date: "2027-05-01",
+        category: "regular_holiday",
+        source: "manual",
+        monitoringBefore: 4,
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  test("createHoliday rejects an out-of-range override", async () => {
+    const service = createHolidaysService(fakeRepository([]));
+
+    await expect(
+      service.createHoliday({
+        name: "Custom",
+        date: "2027-05-01",
+        category: "regular_holiday",
+        source: "manual",
+        monitoringBefore: 999,
+        monitoringAfter: 1,
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  test("updateHoliday rejects a partial patch that clears one side", async () => {
+    const data = sorted([
+      holiday("2027-03-14", "lebaran", {
+        monitoringBefore: 5,
+        monitoringAfter: 5,
+      }),
+    ]);
+    const service = createHolidaysService(fakeRepository(data));
+
+    await expect(
+      service.updateHoliday(data[0]!.id, { monitoringAfter: null }),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  test("updateHoliday can clear the override back to the category default", async () => {
+    const data = sorted([
+      holiday("2027-03-14", "lebaran", {
+        monitoringBefore: 5,
+        monitoringAfter: 5,
+      }),
+    ]);
+    const service = createHolidaysService(fakeRepository(data));
+
+    await service.updateHoliday(data[0]!.id, {
+      monitoringBefore: null,
+      monitoringAfter: null,
+    });
+
+    const period = calculateMonitoringPeriod(data[0]!);
+    expect(period.isOverride).toBe(false);
+    expect(period.before).toBe(30);
   });
 });

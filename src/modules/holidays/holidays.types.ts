@@ -8,11 +8,20 @@ export interface MonitoringRule {
   after: number;
 }
 
+/**
+ * Upper bound for an admin-supplied monitoring override, in days on each side.
+ * Used both for validation and for widening range queries so an override can
+ * never reach further than the calendar fetch anticipates.
+ */
+export const MONITORING_OVERRIDE_MAX_DAYS = 180;
+
 export interface MonitoringPeriod {
   start: string;
   end: string;
   before: number;
   after: number;
+  /** True when the window came from this holiday's own override. */
+  isOverride: boolean;
 }
 
 export interface HolidaySummary {
@@ -71,6 +80,8 @@ export interface CreateHolidayInput {
   isJointLeave?: boolean;
   source?: HolidaySource;
   sourceReference?: string | null;
+  monitoringBefore?: number | null;
+  monitoringAfter?: number | null;
 }
 
 export interface UpdateHolidayInput {
@@ -80,6 +91,8 @@ export interface UpdateHolidayInput {
   isJointLeave?: boolean;
   source?: HolidaySource;
   sourceReference?: string | null;
+  monitoringBefore?: number | null;
+  monitoringAfter?: number | null;
 }
 
 // ---------------------------------------------------------------------------

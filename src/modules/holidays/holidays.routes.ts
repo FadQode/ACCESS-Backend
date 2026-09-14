@@ -7,11 +7,13 @@ import {
   requireAuth,
 } from "../../plugins/auth.plugin";
 import {
+  ForbiddenError,
   ServiceUnavailableError,
 } from "../../shared/errors";
 import { apiErrorResponseSchema } from "../../shared/http/schema";
 import { successResponse } from "../../shared/http/response";
 import type { AuthService } from "../auth/auth.service";
+import type { AuthUser } from "../auth/auth.types";
 import type { HolidaySyncService } from "./holidays.sync";
 import type { HolidaysService } from "./holidays.service";
 import {
@@ -49,6 +51,19 @@ const syncProtectedErrors = {
   503: apiErrorResponseSchema,
 };
 
+/**
+ * Holiday write operations (including monitoring overrides) are administrative.
+ * Read endpoints stay available to every authenticated user.
+ */
+const assertCanManageHolidays = (currentUser: AuthUser): void => {
+  if (currentUser.role !== "admin") {
+    throw new ForbiddenError(
+      "Only admins can manage holidays",
+      "HOLIDAY_MANAGE_FORBIDDEN",
+    );
+  }
+};
+
 const toHolidayItem = (holiday: Holiday) => ({
   id: holiday.id,
   name: holiday.name,
@@ -57,6 +72,8 @@ const toHolidayItem = (holiday: Holiday) => ({
   isJointLeave: holiday.isJointLeave,
   source: holiday.source,
   sourceReference: holiday.sourceReference,
+  monitoringBefore: holiday.monitoringBefore,
+  monitoringAfter: holiday.monitoringAfter,
   createdAt: holiday.createdAt.toISOString(),
   updatedAt: holiday.updatedAt.toISOString(),
 });
@@ -133,7 +150,12 @@ export const createHolidayRoutes = (
     .post(
       "/sync",
       async ({ accessToken, headers, body }) => {
-        await requireAuth(headers.authorization, accessToken, authService);
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        assertCanManageHolidays(currentUser);
         if (!config.apiIndonesia.apiKey) {
           throw new ServiceUnavailableError(
             "Holiday sync is not configured",
@@ -157,7 +179,12 @@ export const createHolidayRoutes = (
     .post(
       "",
       async ({ accessToken, headers, body }) => {
-        await requireAuth(headers.authorization, accessToken, authService);
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        assertCanManageHolidays(currentUser);
         const holiday = await holidaysService.createHoliday(body);
         return successResponse(
           { holiday: toHolidayItem(holiday) },
@@ -197,7 +224,12 @@ export const createHolidayRoutes = (
     .patch(
       "/:id",
       async ({ accessToken, headers, params, body }) => {
-        await requireAuth(headers.authorization, accessToken, authService);
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        assertCanManageHolidays(currentUser);
         const holiday = await holidaysService.updateHoliday(params.id, body);
         return successResponse(
           { holiday: toHolidayItem(holiday) },
@@ -218,7 +250,12 @@ export const createHolidayRoutes = (
     .delete(
       "/:id",
       async ({ accessToken, headers, params }) => {
-        await requireAuth(headers.authorization, accessToken, authService);
+        const currentUser = await requireAuth(
+          headers.authorization,
+          accessToken,
+          authService,
+        );
+        assertCanManageHolidays(currentUser);
         await holidaysService.deleteHoliday(params.id);
         return successResponse({ deleted: true }, "Holiday deleted");
       },

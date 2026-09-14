@@ -903,7 +903,10 @@ serve frontend calendar and holiday overview
 
 Holidays stores only official facts.
 
-Monitoring windows are application constants, not database data.
+Monitoring windows default to application constants per category, and an admin may
+override the window for an individual holiday through the nullable
+`monitoring_before` / `monitoring_after` columns. The override must set both sides
+together, is bounded (0–180 days), and supersedes the category default when present.
 Long weekends and bridge days are derived at read time, never stored.
 
 Important rule:
@@ -911,6 +914,10 @@ Important rule:
 ```txt
 CRUD the facts. Calculate the conditions.
 ```
+
+Holiday reads are available to every authenticated user. Holiday writes
+(create/update/delete/sync), including monitoring overrides, are admin-only
+(`HOLIDAY_MANAGE_FORBIDDEN` otherwise).
 
 ---
 

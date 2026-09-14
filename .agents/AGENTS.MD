@@ -756,6 +756,8 @@ Role boundaries:
 admin:
   manage users
   manage system-level data
+  manage holidays (create/update/delete/sync, monitoring overrides)
+  trigger social complaint ingestion
 
 manager:
   view dashboard

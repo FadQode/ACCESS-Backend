@@ -2,6 +2,7 @@ import type { Holiday } from "../../db/schema";
 import {
   ConflictError,
   NotFoundError,
+  ValidationError,
 } from "../../shared/errors";
 import type { HolidaysRepository } from "./holidays.repository";
 import type {
@@ -18,6 +19,7 @@ import type {
   MonitoringRule,
   UpdateHolidayInput,
 } from "./holidays.types";
+import { MONITORING_OVERRIDE_MAX_DAYS } from "./holidays.types";
 
 // ---------------------------------------------------------------------------
 // Pure ISO-date helpers. All math is UTC-based on "YYYY-MM-DD" strings so the
@@ -76,20 +78,86 @@ export const MONITORING_RULES: Record<HolidayCategory, MonitoringRule> = {
   regular_holiday: { before: 0, after: 0 },
 };
 
+type MonitoringRuleSource = Pick<
+  Holiday,
+  "date" | "category" | "monitoringBefore" | "monitoringAfter"
+>;
+
+/**
+ * A monitoring override must set both sides together and stay within bounds.
+ * Setting only one side would silently fall back to the category rule and
+ * confuse the operator, so it is rejected instead.
+ */
+const assertValidMonitoringOverride = (input: {
+  monitoringBefore?: number | null;
+  monitoringAfter?: number | null;
+}): void => {
+  const before = input.monitoringBefore;
+  const after = input.monitoringAfter;
+  const hasBefore = before !== undefined && before !== null;
+  const hasAfter = after !== undefined && after !== null;
+
+  if (!hasBefore && !hasAfter) return;
+
+  if (hasBefore !== hasAfter) {
+    throw new ValidationError(
+      "monitoringBefore and monitoringAfter must be set together",
+      {},
+      "HOLIDAY_MONITORING_OVERRIDE_INCOMPLETE",
+    );
+  }
+
+  for (const [name, value] of [
+    ["monitoringBefore", before],
+    ["monitoringAfter", after],
+  ] as const) {
+    if (
+      typeof value !== "number" ||
+      !Number.isInteger(value) ||
+      value < 0 ||
+      value > MONITORING_OVERRIDE_MAX_DAYS
+    ) {
+      throw new ValidationError(
+        `${name} must be an integer between 0 and ${MONITORING_OVERRIDE_MAX_DAYS}`,
+        {},
+        "HOLIDAY_MONITORING_OVERRIDE_INVALID",
+      );
+    }
+  }
+};
+
+const resolveMonitoringRule = (
+  holiday: MonitoringRuleSource,
+): MonitoringRule & { isOverride: boolean } => {
+  const isOverride =
+    holiday.monitoringBefore !== null && holiday.monitoringAfter !== null;
+
+  if (isOverride) {
+    return {
+      before: holiday.monitoringBefore!,
+      after: holiday.monitoringAfter!,
+      isOverride: true,
+    };
+  }
+
+  return { ...MONITORING_RULES[holiday.category], isOverride: false };
+};
+
 export const calculateMonitoringPeriod = (
-  holiday: Pick<Holiday, "date" | "category">,
+  holiday: MonitoringRuleSource,
 ): MonitoringPeriod => {
-  const rule = MONITORING_RULES[holiday.category];
+  const rule = resolveMonitoringRule(holiday);
   return {
     start: addDays(holiday.date, -rule.before),
     end: addDays(holiday.date, rule.after),
     before: rule.before,
     after: rule.after,
+    isOverride: rule.isOverride,
   };
 };
 
 const withinMonitoring = (
-  holiday: Pick<Holiday, "date" | "category">,
+  holiday: MonitoringRuleSource,
   date: string,
 ): boolean => {
   if (holiday.date === date) return true;
@@ -296,13 +364,12 @@ export const createHolidaysService = (repository: HolidaysRepository) => ({
     }
     // A holiday outside the requested range can still paint days inside it
     // through its monitoring window (up to H-before before the range start,
-    // H-after past the range end). Fetch wide enough to include those.
-    const rules = Object.values(MONITORING_RULES);
-    const maxBefore = Math.max(...rules.map((rule) => rule.before));
-    const maxAfter = Math.max(...rules.map((rule) => rule.after));
+    // H-after past the range end). Fetch wide enough to include those, using
+    // the largest of the category defaults and any per-holiday override.
+    const padding = MONITORING_OVERRIDE_MAX_DAYS;
     const rangeHolidays = await repository.findHolidaysInRange(
-      addDays(start, -maxAfter),
-      addDays(end, maxBefore),
+      addDays(start, -padding),
+      addDays(end, padding),
     );
     return buildCalendar(start, end, rangeHolidays);
   },
@@ -321,7 +388,7 @@ export const createHolidaysService = (repository: HolidaysRepository) => ({
       .filter(
         (holiday) =>
           holiday.date > referenceDate &&
-          MONITORING_RULES[holiday.category].before > 0,
+          calculateMonitoringPeriod(holiday).before > 0,
       )
       .sort((a, b) => a.date.localeCompare(b.date))[0];
 
@@ -342,6 +409,7 @@ export const createHolidaysService = (repository: HolidaysRepository) => ({
   },
 
   async createHoliday(input: CreateHolidayInput): Promise<Holiday> {
+    assertValidMonitoringOverride(input);
     await this.assertNoDuplicate(input.date, input.source ?? "manual");
     return repository.createHoliday({ isJointLeave: false, source: "manual", ...input });
   },
@@ -354,6 +422,19 @@ export const createHolidaysService = (repository: HolidaysRepository) => ({
     if (!existing) {
       throw new NotFoundError("Holiday not found", "HOLIDAY_NOT_FOUND");
     }
+
+    // Validate the override against the values the row will actually have,
+    // so a partial patch that clears only one side is rejected.
+    assertValidMonitoringOverride({
+      monitoringBefore:
+        patch.monitoringBefore !== undefined
+          ? patch.monitoringBefore
+          : existing.monitoringBefore,
+      monitoringAfter:
+        patch.monitoringAfter !== undefined
+          ? patch.monitoringAfter
+          : existing.monitoringAfter,
+    });
 
     const nextDate = patch.date ?? existing.date;
     const nextSource = patch.source ?? existing.source;

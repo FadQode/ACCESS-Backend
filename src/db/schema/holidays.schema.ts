@@ -2,6 +2,7 @@ import {
   boolean,
   date,
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -34,6 +35,8 @@ export const holidays = pgTable(
     isJointLeave: boolean("is_joint_leave").notNull().default(false),
     source: holidaySourceEnum("source").notNull().default("manual"),
     sourceReference: text("source_reference"),
+    monitoringBefore: integer("monitoring_before"),
+    monitoringAfter: integer("monitoring_after"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

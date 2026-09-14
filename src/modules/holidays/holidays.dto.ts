@@ -19,6 +19,15 @@ export const holidayParamsSchema = t.Object({
   id: t.String({ format: "uuid" }),
 });
 
+const monitoringOverrideSchema = {
+  monitoringBefore: t.Optional(
+    t.Union([t.Integer({ minimum: 0, maximum: 180 }), t.Null()]),
+  ),
+  monitoringAfter: t.Optional(
+    t.Union([t.Integer({ minimum: 0, maximum: 180 }), t.Null()]),
+  ),
+};
+
 export const createHolidayBodySchema = t.Object({
   name: t.String({ minLength: 1, maxLength: 255 }),
   date: isoDateSchema,
@@ -26,6 +35,7 @@ export const createHolidayBodySchema = t.Object({
   isJointLeave: t.Optional(t.Boolean({ default: false })),
   source: t.Optional(holidaySourceSchema),
   sourceReference: t.Optional(t.Union([t.String(), t.Null()])),
+  ...monitoringOverrideSchema,
 });
 
 export const updateHolidayBodySchema = t.Partial(createHolidayBodySchema);
@@ -66,6 +76,8 @@ const holidayItemSchema = t.Object({
   isJointLeave: t.Boolean(),
   source: holidaySourceSchema,
   sourceReference: t.Union([t.String(), t.Null()]),
+  monitoringBefore: t.Union([t.Integer(), t.Null()]),
+  monitoringAfter: t.Union([t.Integer(), t.Null()]),
   createdAt: t.String({ format: "date-time" }),
   updatedAt: t.String({ format: "date-time" }),
 });
@@ -130,7 +142,11 @@ const monitoringRuleSchema = t.Object({
 
 const monitoringPeriodSchema = t.Composite([
   monitoringRuleSchema,
-  t.Object({ start: isoDateSchema, end: isoDateSchema }),
+  t.Object({
+    start: isoDateSchema,
+    end: isoDateSchema,
+    isOverride: t.Boolean(),
+  }),
 ]);
 
 const overviewHolidaySchema = t.Object({

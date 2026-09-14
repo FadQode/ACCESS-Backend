@@ -47,6 +47,8 @@ const storedRow = (input: NewHoliday): Holiday => ({
   isJointLeave: input.isJointLeave ?? false,
   source: input.source ?? "skb_3_menteri",
   sourceReference: input.sourceReference ?? null,
+  monitoringBefore: input.monitoringBefore ?? null,
+  monitoringAfter: input.monitoringAfter ?? null,
   createdAt: now,
   updatedAt: now,
 });
